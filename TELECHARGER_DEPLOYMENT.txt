@@ -1,0 +1,74 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║           COMMENT TÉLÉCHARGER LE DOSSIER DEPLOYMENT                   ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+📥 MÉTHODE 1 : VIA L'INTERFACE BOLT (Le plus simple)
+═══════════════════════════════════════════════════════════════════════
+
+1. Regardez le panneau de gauche de Bolt (explorateur de fichiers)
+2. Trouvez le dossier "deployment"
+3. Clic DROIT sur le dossier "deployment"
+4. Sélectionnez "Download" ou "Télécharger"
+5. Le dossier sera téléchargé en ZIP
+
+
+📥 MÉTHODE 2 : TÉLÉCHARGER L'ARCHIVE .tar.gz
+═══════════════════════════════════════════════════════════════════════
+
+1. Dans l'explorateur de fichiers Bolt (panneau gauche)
+2. Trouvez le fichier "deployment-gredeco.tar.gz" à la racine
+3. Clic DROIT sur ce fichier
+4. Sélectionnez "Download"
+5. Extrayez l'archive sur votre ordinateur
+
+
+📥 MÉTHODE 3 : TÉLÉCHARGER TOUT LE PROJET
+═══════════════════════════════════════════════════════════════════════
+
+1. Cliquez sur le menu hamburger ☰ en haut à gauche de Bolt
+2. Sélectionnez "Download Project" ou "Télécharger le projet"
+3. Extrayez le ZIP
+4. Le dossier "deployment" sera à l'intérieur
+
+
+📥 MÉTHODE 4 : COPIER-COLLER LES FICHIERS
+═══════════════════════════════════════════════════════════════════════
+
+Vous pouvez aussi copier le contenu de chaque fichier :
+
+1. Ouvrez chaque fichier dans Bolt
+2. Sélectionnez tout le contenu (Ctrl+A)
+3. Copiez (Ctrl+C)
+4. Créez un nouveau fichier sur votre bureau
+5. Collez le contenu (Ctrl+V)
+
+Fichiers à copier :
+- deployment/web.config
+- deployment/.htaccess
+- deployment/GUIDE_DEPLOIEMENT.md
+- deployment/README.txt
+
+
+📋 FICHIERS DISPONIBLES
+═══════════════════════════════════════════════════════════════════════
+
+deployment/
+├── web.config              → Configuration IIS (Windows)
+├── .htaccess               → Configuration Apache (Linux)
+├── GUIDE_DEPLOIEMENT.md    → Guide complet de déploiement
+└── README.txt              → Instructions rapides
+
+
+✅ APRÈS TÉLÉCHARGEMENT
+═══════════════════════════════════════════════════════════════════════
+
+N'oubliez pas de compiler l'application avant de déployer :
+
+$ npm install
+$ npm run build
+
+Puis copiez le contenu de dist/ + les fichiers de configuration
+vers votre serveur.
+

@@ -1,0 +1,26 @@
+<svg width="800" height="1000" viewBox="0 0 800 1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="blue1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8DC9DD;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2E5C94;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="blue2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#A8CFE0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6AADCD;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="purple1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#B9B1D4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9B8DC0;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <ellipse cx="400" cy="320" rx="320" ry="350" fill="url(#blue1)"/>
+
+  <path d="M 400,20 Q 600,50 650,250 T 680,580 Q 680,700 400,900 L 400,20 Z" fill="url(#blue2)"/>
+
+  <path d="M 400,20 Q 500,100 520,400 Q 520,500 400,900 L 400,20 Z" fill="url(#purple1)"/>
+
+  <g fill="#1565A0">
+    <text x="400" y="780" font-family="Arial, sans-serif" font-size="180" font-weight="bold" text-anchor="middle" letter-spacing="10">GREDECO</text>
+  </g>
+</svg>
