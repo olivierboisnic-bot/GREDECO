@@ -1216,6 +1216,16 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
             const instanceManualTimepoints = manualTimepointsByItemKey.get(instanceItemKey);
             const instanceTimepoints = instanceManualTimepoints || objective.timepoints || [];
 
+            // Get manual price and quantity for this specific instance
+            const instanceManualPrice = manuallyEditedPricesRef.current.get(instanceItemKey);
+            const instanceUnitPrice = instanceManualPrice !== undefined ? instanceManualPrice : service.base_price;
+
+            const instanceManualQuantity = manuallyEditedQuantitiesRef.current.get(instanceItemKey);
+            const instanceQuantity = instanceManualQuantity !== undefined ? instanceManualQuantity : quantity;
+
+            const instanceAmountWithoutTax = instanceQuantity * instanceUnitPrice;
+            const instanceSubtotal = instanceAmountWithoutTax * (1 + vatRate / 100);
+
             const itemIdx = newItems.length;
             newItemInstanceIds.set(itemIdx, instance.instanceId);
 
@@ -1226,12 +1236,12 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
               objective_id: objective.id,
               objective_name: objective.name,
               objective_timepoints: instanceTimepoints.join(', '),
-              quantity,
-              unit_price: unitPrice,
+              quantity: instanceQuantity,
+              unit_price: instanceUnitPrice,
               discount_percent: 0,
               vat_percent: vatRate,
-              amount_without_tax: amountWithoutTax,
-              subtotal,
+              amount_without_tax: instanceAmountWithoutTax,
+              subtotal: instanceSubtotal,
             });
           });
         }
