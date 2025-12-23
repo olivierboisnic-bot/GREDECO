@@ -662,6 +662,8 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     theme: 'grid',
     styles: {
       fontSize: 8,
+      font: 'helvetica',
+      fontStyle: 'normal',
       cellPadding: 3,
       lineColor: [200, 200, 200],
       lineWidth: 0.1,
@@ -677,7 +679,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       halign: 'center'
     },
     columnStyles: {
-      0: { cellWidth: 100, overflow: 'linebreak', valign: 'top' },
+      0: { cellWidth: 100, overflow: 'linebreak', valign: 'top', font: 'helvetica', fontStyle: 'normal' },
       1: { cellWidth: 16, halign: 'center', valign: 'middle' },
       2: { cellWidth: 25, halign: 'right', valign: 'middle' },
       3: { cellWidth: 25, halign: 'right', valign: 'middle' },
