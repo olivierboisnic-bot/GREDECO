@@ -122,12 +122,28 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
   };
 
   const sortTimepoints = (timepoints: string[]): string[] => {
-    const getTimepointValueInHours = (timepoint: string): number => {
-      const isHour = timepoint.endsWith('H');
-      const num = parseInt(timepoint.substring(1));
-      return isHour ? num : num * 24;
+    const getTimepointValueInMinutes = (timepoint: string): number => {
+      // Remove the 'T' prefix
+      const value = timepoint.substring(1);
+
+      // Check for minutes (min or m)
+      if (value.endsWith('min')) {
+        return parseInt(value);
+      }
+      if (value.match(/^\d+m$/i)) {
+        return parseInt(value);
+      }
+
+      // Check for hours (H)
+      if (value.endsWith('H')) {
+        return parseInt(value) * 60;
+      }
+
+      // Otherwise, it's days - convert to minutes
+      const num = parseInt(value);
+      return num * 24 * 60;
     };
-    return timepoints.sort((a, b) => getTimepointValueInHours(a) - getTimepointValueInHours(b));
+    return timepoints.sort((a, b) => getTimepointValueInMinutes(a) - getTimepointValueInMinutes(b));
   };
 
   const toggleTimepoint = (objectiveId: string, timepoint: string) => {
@@ -255,9 +271,9 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
     const customValue = customTimepoints[objectiveId]?.trim();
     if (!customValue) return;
 
-    const timepointPattern = /^T\d+H?$/i;
+    const timepointPattern = /^T\d+(H|min|m)?$/i;
     if (!timepointPattern.test(customValue.toUpperCase())) {
-      alert('Veuillez entrer un format de timepoint valide (ex: T14, T8H, T24H)');
+      alert('Veuillez entrer un format de timepoint valide (ex: T14, T8H, T24H, T30min, T15m)');
       return;
     }
 
@@ -642,7 +658,7 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
                       addCustomTimepoint(objective.id);
                     }
                   }}
-                  placeholder="Ajouter un temps personnalisé (ex: T14, T8H, T24H)"
+                  placeholder="Ajouter un temps personnalisé (ex: T14, T8H, T30min, T15m)"
                   className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <button
@@ -943,16 +959,8 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
                                 const itemTps = itemTimepoints[itemIndex] || [];
                                 const allTimepoints = [...new Set([...objective.timepoints, ...itemTps])];
 
-                                // Sort timepoints to maintain a logical order
-                                const sortOrder = ['T0', 'T2H', 'T4H', 'T7', 'T8H', 'T14', 'T21', 'T24H', 'T28', 'T56'];
-                                const sorted = allTimepoints.sort((a, b) => {
-                                  const indexA = sortOrder.indexOf(a);
-                                  const indexB = sortOrder.indexOf(b);
-                                  if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                                  if (indexA !== -1) return -1;
-                                  if (indexB !== -1) return 1;
-                                  return a.localeCompare(b);
-                                });
+                                // Sort timepoints using the same logic as the main sort function
+                                const sorted = sortTimepoints(allTimepoints);
 
                                 return sorted.map((tp) => {
                                   const isSelected = itemTps.includes(tp);
