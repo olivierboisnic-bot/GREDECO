@@ -364,12 +364,15 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                         </tr>
                       )}
                       {group.items.map((item) => {
-                        let cleanDescription = item.service_name || item.description || '';
+                        // Use service_name if available, otherwise fallback to description
+                        let cleanDescription = (item.service_name || item.description || '').trim();
 
+                        // Clean up description only if service_name is not present
                         if (!item.service_name && item.description) {
                           cleanDescription = cleanDescription.replace(/\s*\(Objective:.*?\)/g, '');
                           cleanDescription = cleanDescription.replace(/\s*-?\s*MANDATORY FOR ALL STUDIES/gi, '');
                           cleanDescription = cleanDescription.replace(/\s*-?\s*MANDATORY FOR CLINICAL TRIALS/gi, '');
+                          cleanDescription = cleanDescription.replace(/\s*-?\s*MANDATORY FOR LABORATORY TRIALS/gi, '');
                           cleanDescription = cleanDescription.replace(/\|\s*Claims:.*$/gi, '');
                           cleanDescription = cleanDescription.replace(/\s*\(TVA:\s*[\d.]+\)/g, '');
                           cleanDescription = cleanDescription.trim();
@@ -461,12 +464,15 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                         if (!isRapportA && isRapportB) return 1;
                         return 0;
                       }).map((item) => {
-                        let cleanDescription = item.service_name || item.description || '';
+                        // Use service_name if available, otherwise fallback to description
+                        let cleanDescription = (item.service_name || item.description || '').trim();
 
+                        // Clean up description only if service_name is not present
                         if (!item.service_name && item.description) {
                           cleanDescription = cleanDescription.replace(/\s*\(Objectif?:.*?\)/g, '');
                           cleanDescription = cleanDescription.replace(/\s*-?\s*MANDATORY FOR ALL STUDIES/gi, '');
                           cleanDescription = cleanDescription.replace(/\s*-?\s*MANDATORY FOR CLINICAL TRIALS/gi, '');
+                          cleanDescription = cleanDescription.replace(/\s*-?\s*MANDATORY FOR LABORATORY TRIALS/gi, '');
                           cleanDescription = cleanDescription.replace(/\|\s*Claims:.*$/gi, '');
                           cleanDescription = cleanDescription.replace(/\s*\(TVA:\s*[\d.]+\)/g, '');
                           cleanDescription = cleanDescription.trim();
@@ -489,12 +495,15 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                         );
                       })}
                       {mandatoryItems.filter(item => item.description?.toLowerCase().includes('rapport')).map((item) => {
-                        let cleanDescription = item.service_name || item.description || '';
+                        // Use service_name if available, otherwise fallback to description
+                        let cleanDescription = (item.service_name || item.description || '').trim();
 
+                        // Clean up description only if service_name is not present
                         if (!item.service_name && item.description) {
                           cleanDescription = cleanDescription.replace(/\s*\(Objectif?:.*?\)/g, '');
                           cleanDescription = cleanDescription.replace(/\s*-?\s*MANDATORY FOR ALL STUDIES/gi, '');
                           cleanDescription = cleanDescription.replace(/\s*-?\s*MANDATORY FOR CLINICAL TRIALS/gi, '');
+                          cleanDescription = cleanDescription.replace(/\s*-?\s*MANDATORY FOR LABORATORY TRIALS/gi, '');
                           cleanDescription = cleanDescription.replace(/\|\s*Claims:.*$/gi, '');
                           cleanDescription = cleanDescription.replace(/\s*\(TVA:\s*[\d.]+\)/g, '');
                           cleanDescription = cleanDescription.trim();

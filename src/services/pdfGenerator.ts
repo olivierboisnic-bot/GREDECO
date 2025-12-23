@@ -556,12 +556,15 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     }
 
     group.items.forEach(item => {
-      let cleanDesc = item.service_name || item.description || '';
+      // Use service_name if available, otherwise fallback to description
+      let cleanDesc = (item.service_name || item.description || '').trim();
 
+      // Clean up description only if service_name is not present
       if (!item.service_name && item.description) {
         cleanDesc = cleanDesc.replace(/\s*\(Objective:.*?\)/g, '').replace(/\s*\(Objectif:.*?\)/g, '');
         cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR ALL STUDIES/gi, '');
         cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR CLINICAL TRIALS/gi, '');
+        cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR LABORATORY TRIALS/gi, '');
         cleanDesc = cleanDesc.replace(/\|\s*Claims:.*$/gi, '');
         cleanDesc = cleanDesc.replace(/\(TVA:\s*[\d.]+\)/gi, '');
         cleanDesc = cleanDesc.trim();
@@ -613,11 +616,14 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     }
 
     mandatoryItems.forEach(item => {
-      let cleanDesc = item.service_name || item.description || '';
+      // Use service_name if available, otherwise fallback to description
+      let cleanDesc = (item.service_name || item.description || '').trim();
 
+      // Clean up description only if service_name is not present
       if (!item.service_name && item.description) {
         cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR ALL STUDIES/gi, '');
         cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR CLINICAL TRIALS/gi, '');
+        cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR LABORATORY TRIALS/gi, '');
         cleanDesc = cleanDesc.replace(/\|\s*Claims:.*$/gi, '');
         cleanDesc = cleanDesc.replace(/\(TVA:\s*[\d.]+\)/gi, '');
         cleanDesc = cleanDesc.trim();
