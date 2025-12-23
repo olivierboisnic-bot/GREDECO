@@ -1210,8 +1210,11 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
           });
         } else {
           instances.forEach((instance, idx) => {
-            const customServiceName = instance.customName || serviceName;
             const instanceItemKey = `${service.id}_${objective.id}_${instance.instanceId}`;
+
+            // Check for manually edited service name first, then instance custom name, then serviceName
+            const instanceManualServiceName = manuallyEditedServiceNamesRef.current.get(instanceItemKey);
+            const customServiceName = instanceManualServiceName || instance.customName || serviceName;
 
             const instanceManualTimepoints = manualTimepointsByItemKey.get(instanceItemKey);
             const instanceTimepoints = instanceManualTimepoints || objective.timepoints || [];
@@ -1229,10 +1232,13 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
             const itemIdx = newItems.length;
             newItemInstanceIds.set(itemIdx, instance.instanceId);
 
+            // Use custom service name for description if available
+            const instanceDescription = instanceManualServiceName || instance.customName || description;
+
             newItems.push({
               service_id: service.id,
               service_name: customServiceName,
-              description: instance.customName || description,
+              description: instanceDescription,
               objective_id: objective.id,
               objective_name: objective.name,
               objective_timepoints: instanceTimepoints.join(', '),
