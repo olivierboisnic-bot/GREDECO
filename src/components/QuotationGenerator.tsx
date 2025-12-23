@@ -1061,6 +1061,12 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
           return;
         }
 
+        // Skip if this service was already added as a mandatory service
+        if (addedServiceIds.has(service.id)) {
+          console.log('Skipping service already added as mandatory:', service.name);
+          return;
+        }
+
         const itemKey = `${service.id}_${objective.id}`;
 
         // Check if there are manually overridden timepoints for this specific item
@@ -1208,6 +1214,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
             amount_without_tax: amountWithoutTax,
             subtotal,
           });
+          addedServiceIds.add(service.id);
         } else {
           instances.forEach((instance, idx) => {
             const instanceItemKey = `${service.id}_${objective.id}_${instance.instanceId}`;
@@ -1250,6 +1257,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
               subtotal: instanceSubtotal,
             });
           });
+          addedServiceIds.add(service.id);
         }
       });
     });
