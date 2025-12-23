@@ -219,7 +219,9 @@ export async function generateInvoicePDF(invoice: Invoice, quotation: Quotation)
       lineColor: [0, 0, 0],
       lineWidth: 0.1,
       overflow: 'linebreak',
-      halign: 'left'
+      halign: 'left',
+      valign: 'top',
+      minCellHeight: 8
     },
     headStyles: {
       fillColor: [108, 99, 142],
@@ -229,12 +231,12 @@ export async function generateInvoicePDF(invoice: Invoice, quotation: Quotation)
       lineWidth: 0.5
     },
     columnStyles: {
-      0: { cellWidth: 70, overflow: 'linebreak' },
-      1: { cellWidth: 15, halign: 'center' },
-      2: { cellWidth: 28, halign: 'right' },
-      3: { cellWidth: 15, halign: 'center' },
-      4: { cellWidth: 25, halign: 'right' },
-      5: { cellWidth: 28, halign: 'right', fontStyle: 'bold' }
+      0: { cellWidth: 80, overflow: 'linebreak', valign: 'top' },
+      1: { cellWidth: 15, halign: 'center', valign: 'middle' },
+      2: { cellWidth: 26, halign: 'right', valign: 'middle' },
+      3: { cellWidth: 15, halign: 'center', valign: 'middle' },
+      4: { cellWidth: 24, halign: 'right', valign: 'middle' },
+      5: { cellWidth: 26, halign: 'right', fontStyle: 'bold', valign: 'middle' }
     }
   });
 

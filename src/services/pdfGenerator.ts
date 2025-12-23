@@ -677,11 +677,11 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       halign: 'center'
     },
     columnStyles: {
-      0: { cellWidth: 88, overflow: 'linebreak', valign: 'top' },
-      1: { cellWidth: 18, halign: 'center', valign: 'middle' },
-      2: { cellWidth: 28, halign: 'right', valign: 'middle' },
-      3: { cellWidth: 28, halign: 'right', valign: 'middle' },
-      4: { cellWidth: 18, halign: 'center', valign: 'middle' }
+      0: { cellWidth: 100, overflow: 'linebreak', valign: 'top' },
+      1: { cellWidth: 16, halign: 'center', valign: 'middle' },
+      2: { cellWidth: 25, halign: 'right', valign: 'middle' },
+      3: { cellWidth: 25, halign: 'right', valign: 'middle' },
+      4: { cellWidth: 16, halign: 'center', valign: 'middle' }
     },
     margin: { left: margin, right: margin },
     showHead: 'everyPage',
