@@ -570,6 +570,9 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
         cleanDesc = cleanDesc.trim();
       }
 
+      // Normalize text for better PDF rendering
+      cleanDesc = cleanDesc.normalize('NFC');
+
       if (item.discount_percent > 0) {
         cleanDesc += ` (Remise: ${item.discount_percent}%)`;
       }
