@@ -570,8 +570,10 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
         cleanDesc = cleanDesc.trim();
       }
 
-      // Normalize text for better PDF rendering
+      // Normalize text for better PDF rendering and fix common issues
       cleanDesc = cleanDesc.normalize('NFC');
+      // Fix double "de" (e.g., "Test de d'homogénéité" -> "Test d'homogénéité")
+      cleanDesc = cleanDesc.replace(/\bde\s+d'/gi, "d'");
 
       if (item.discount_percent > 0) {
         cleanDesc += ` (Remise: ${item.discount_percent}%)`;
@@ -632,6 +634,11 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
         cleanDesc = cleanDesc.trim();
       }
 
+      // Normalize text for better PDF rendering and fix common issues
+      cleanDesc = cleanDesc.normalize('NFC');
+      // Fix double "de" (e.g., "Test de d'homogénéité" -> "Test d'homogénéité")
+      cleanDesc = cleanDesc.replace(/\bde\s+d'/gi, "d'");
+
       if (item.discount_percent > 0) {
         cleanDesc += ` (Remise: ${item.discount_percent}%)`;
       }
@@ -673,7 +680,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       overflow: 'linebreak',
       halign: 'left',
       valign: 'top',
-      minCellHeight: 8
+      minCellHeight: 10
     },
     headStyles: {
       fillColor: [200, 210, 240],
@@ -682,7 +689,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       halign: 'center'
     },
     columnStyles: {
-      0: { cellWidth: 100, overflow: 'linebreak', valign: 'top', font: 'helvetica', fontStyle: 'normal' },
+      0: { cellWidth: 100, overflow: 'linebreak', valign: 'top', font: 'helvetica', fontStyle: 'normal', minCellHeight: 10 },
       1: { cellWidth: 16, halign: 'center', valign: 'middle' },
       2: { cellWidth: 25, halign: 'right', valign: 'middle' },
       3: { cellWidth: 25, halign: 'right', valign: 'middle' },
@@ -690,7 +697,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     },
     margin: { left: margin, right: margin },
     showHead: 'everyPage',
-    rowPageBreak: 'avoid',
+    rowPageBreak: 'auto',
     didDrawPage: (data: any) => {
       yPos = data.cursor?.y || yPos;
     }
