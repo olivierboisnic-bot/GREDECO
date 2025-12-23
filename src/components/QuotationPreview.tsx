@@ -385,7 +385,7 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                         if (isIndemnisation && isZeroPrice) {
                           return (
                             <tr key={`${groupIndex}-${item.id}`} className="bg-white">
-                              <td className="py-2 px-3 border border-gray-300">
+                              <td className="py-2 px-3 border border-gray-300 break-words">
                                 {cleanDescription}
                                 {item.discount_percent > 0 && (
                                   <span className="ml-2 font-bold text-red-600">(Remise: {item.discount_percent}%)</span>
@@ -401,7 +401,7 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                         const adjustedUnitPrice = item.unit_price * (1 - (item.discount_percent || 0) / 100);
                         return (
                           <tr key={`${groupIndex}-${item.id}`} className="bg-white">
-                            <td className="py-2 px-3 border border-gray-300">
+                            <td className="py-2 px-3 border border-gray-300 break-words">
                               {cleanDescription}
                               {item.discount_percent > 0 && (
                                 <span className="ml-2 font-bold text-red-600">(Remise: {item.discount_percent}%)</span>
@@ -427,7 +427,7 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                       </tr>
                       {!items.some(item => (item.service_name || item.description || '').toLowerCase().includes('indemnisation')) && (
                         <tr className="bg-white">
-                          <td className="py-2 px-3 border border-gray-300">
+                          <td className="py-2 px-3 border border-gray-300 break-words">
                             Indemnisation des panélistes - Fournis par le client
                           </td>
                           <td className="py-2 px-3 border border-gray-300 text-center">-</td>
@@ -481,7 +481,7 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                         const adjustedUnitPrice = item.unit_price * (1 - (item.discount_percent || 0) / 100);
                         return (
                           <tr key={item.id} className="bg-white">
-                            <td className="py-2 px-3 border border-gray-300">
+                            <td className="py-2 px-3 border border-gray-300 break-words">
                               {cleanDescription}
                               {item.discount_percent > 0 && (
                                 <span className="ml-2 font-bold text-red-600">(Remise: {item.discount_percent}%)</span>
@@ -512,7 +512,7 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                         const adjustedUnitPrice = item.unit_price * (1 - (item.discount_percent || 0) / 100);
                         return (
                         <tr key={item.id} className="bg-white">
-                          <td className="py-2 px-3 border border-gray-300">
+                          <td className="py-2 px-3 border border-gray-300 break-words">
                             {cleanDescription}
                             {item.discount_percent > 0 && (
                               <span className="ml-2 font-bold text-red-600">(Remise: {item.discount_percent}%)</span>

@@ -217,7 +217,9 @@ export async function generateInvoicePDF(invoice: Invoice, quotation: Quotation)
       fontSize: 9,
       cellPadding: 3,
       lineColor: [0, 0, 0],
-      lineWidth: 0.1
+      lineWidth: 0.1,
+      overflow: 'linebreak',
+      cellWidth: 'wrap'
     },
     headStyles: {
       fillColor: [108, 99, 142],
@@ -227,7 +229,7 @@ export async function generateInvoicePDF(invoice: Invoice, quotation: Quotation)
       lineWidth: 0.5
     },
     columnStyles: {
-      0: { cellWidth: 70 },
+      0: { cellWidth: 70, overflow: 'linebreak' },
       1: { cellWidth: 15, halign: 'center' },
       2: { cellWidth: 28, halign: 'right' },
       3: { cellWidth: 15, halign: 'center' },
