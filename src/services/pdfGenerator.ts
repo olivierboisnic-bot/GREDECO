@@ -662,11 +662,13 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     theme: 'grid',
     styles: {
       fontSize: 8,
-      cellPadding: 2,
+      cellPadding: 3,
       lineColor: [200, 200, 200],
       lineWidth: 0.1,
       overflow: 'linebreak',
-      cellWidth: 'wrap'
+      halign: 'left',
+      valign: 'top',
+      minCellHeight: 8
     },
     headStyles: {
       fillColor: [200, 210, 240],
@@ -675,14 +677,15 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       halign: 'center'
     },
     columnStyles: {
-      0: { cellWidth: 88, overflow: 'linebreak' },
-      1: { cellWidth: 18, halign: 'center' },
-      2: { cellWidth: 28, halign: 'right' },
-      3: { cellWidth: 28, halign: 'right' },
-      4: { cellWidth: 18, halign: 'center' }
+      0: { cellWidth: 88, overflow: 'linebreak', valign: 'top' },
+      1: { cellWidth: 18, halign: 'center', valign: 'middle' },
+      2: { cellWidth: 28, halign: 'right', valign: 'middle' },
+      3: { cellWidth: 28, halign: 'right', valign: 'middle' },
+      4: { cellWidth: 18, halign: 'center', valign: 'middle' }
     },
     margin: { left: margin, right: margin },
     showHead: 'everyPage',
+    rowPageBreak: 'avoid',
     didDrawPage: (data: any) => {
       yPos = data.cursor?.y || yPos;
     }

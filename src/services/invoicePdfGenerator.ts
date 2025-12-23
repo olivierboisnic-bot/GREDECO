@@ -219,7 +219,7 @@ export async function generateInvoicePDF(invoice: Invoice, quotation: Quotation)
       lineColor: [0, 0, 0],
       lineWidth: 0.1,
       overflow: 'linebreak',
-      cellWidth: 'wrap'
+      halign: 'left'
     },
     headStyles: {
       fillColor: [108, 99, 142],
