@@ -574,6 +574,10 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       cleanDesc = cleanDesc.normalize('NFC');
       // Fix double "de" (e.g., "Test de d'homogénéité" -> "Test d'homogénéité")
       cleanDesc = cleanDesc.replace(/\bde\s+d'/gi, "d'");
+      // Remove any zero-width spaces, invisible characters, and extra whitespace
+      cleanDesc = cleanDesc.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '');
+      // Replace multiple spaces with single space
+      cleanDesc = cleanDesc.replace(/\s+/g, ' ').trim();
 
       if (item.discount_percent > 0) {
         cleanDesc += ` (Remise: ${item.discount_percent}%)`;
@@ -638,6 +642,10 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       cleanDesc = cleanDesc.normalize('NFC');
       // Fix double "de" (e.g., "Test de d'homogénéité" -> "Test d'homogénéité")
       cleanDesc = cleanDesc.replace(/\bde\s+d'/gi, "d'");
+      // Remove any zero-width spaces, invisible characters, and extra whitespace
+      cleanDesc = cleanDesc.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '');
+      // Replace multiple spaces with single space
+      cleanDesc = cleanDesc.replace(/\s+/g, ' ').trim();
 
       if (item.discount_percent > 0) {
         cleanDesc += ` (Remise: ${item.discount_percent}%)`;
@@ -698,6 +706,12 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     margin: { left: margin, right: margin },
     showHead: 'everyPage',
     rowPageBreak: 'auto',
+    didParseCell: (data: any) => {
+      // Ensure text content is properly normalized
+      if (data.cell.raw && typeof data.cell.raw === 'string') {
+        data.cell.text = [data.cell.raw.normalize('NFC')];
+      }
+    },
     didDrawPage: (data: any) => {
       yPos = data.cursor?.y || yPos;
     }
