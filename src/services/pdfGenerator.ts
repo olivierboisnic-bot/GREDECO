@@ -10,43 +10,32 @@ interface ObjectiveGroup {
 }
 
 const sortTimepoints = (timepoints: string[]): string[] => {
-  return timepoints.sort((a, b) => {
+  const getTimepointValueInMinutes = (timepoint: string): number => {
     // T0 always comes first
-    if (a === 'T0') return -1;
-    if (b === 'T0') return 1;
+    if (timepoint === 'T0') return 0;
 
-    // Extract numeric value and unit from timepoint (e.g., "T2H", "T28", "T24H")
-    const parseTimepoint = (tp: string): { value: number, unit: string } => {
-      const match = tp.match(/^T(\d+)([A-Z]*)$/i);
-      if (!match) return { value: 0, unit: '' };
-      return {
-        value: parseInt(match[1], 10),
-        unit: match[2] || ''
-      };
-    };
+    // Remove the 'T' prefix and work with uppercase for consistency
+    const value = timepoint.substring(1).toUpperCase();
 
-    const aData = parseTimepoint(a);
-    const bData = parseTimepoint(b);
-
-    // Define unit priority (H = hours, no unit = days, J = jours/days, M = months)
-    const unitPriority: { [key: string]: number } = {
-      'H': 1,  // Hours
-      '': 2,   // Days (default)
-      'J': 2,  // Jours (days)
-      'M': 3   // Months
-    };
-
-    const aPriority = unitPriority[aData.unit.toUpperCase()] || 2;
-    const bPriority = unitPriority[bData.unit.toUpperCase()] || 2;
-
-    // If same unit, compare numeric values
-    if (aPriority === bPriority) {
-      return aData.value - bData.value;
+    // Check for minutes (MIN or M at the end)
+    if (value.endsWith('MIN')) {
+      return parseInt(value);
+    }
+    if (value.match(/^\d+M$/)) {
+      return parseInt(value);
     }
 
-    // Different units: hours < days < months
-    return aPriority - bPriority;
-  });
+    // Check for hours (H)
+    if (value.endsWith('H')) {
+      return parseInt(value) * 60;
+    }
+
+    // Otherwise, it's days - convert to minutes
+    const num = parseInt(value);
+    return num * 24 * 60;
+  };
+
+  return timepoints.sort((a, b) => getTimepointValueInMinutes(a) - getTimepointValueInMinutes(b));
 };
 
 const wrapText = (pdf: jsPDF, text: string, maxWidth: number): string[] => {
