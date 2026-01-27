@@ -1997,6 +1997,13 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       return newMap;
     });
 
+    // Remove from loadedItemKeys to force recalculation
+    setLoadedItemKeys(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(itemKey);
+      return newSet;
+    });
+
     // Reset to objective's timepoints
     const objective = objectives.find(obj => obj.id === item.objective_id);
     if (objective) {
