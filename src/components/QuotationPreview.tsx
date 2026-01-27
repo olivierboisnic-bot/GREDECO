@@ -402,7 +402,7 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                         return (
                           <tr key={`${groupIndex}-${item.id}`} className="bg-white">
                             <td className="py-2 px-3 border border-gray-300 break-words">
-                              {cleanDescription}
+                              <span className="text-sm font-semibold">{cleanDescription}</span>
                               {item.discount_percent > 0 && (
                                 <span className="ml-2 font-bold text-red-600">(Remise: {item.discount_percent}%)</span>
                               )}
@@ -482,7 +482,7 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                         return (
                           <tr key={item.id} className="bg-white">
                             <td className="py-2 px-3 border border-gray-300 break-words">
-                              {cleanDescription}
+                              <span className="text-sm font-semibold">{cleanDescription}</span>
                               {item.discount_percent > 0 && (
                                 <span className="ml-2 font-bold text-red-600">(Remise: {item.discount_percent}%)</span>
                               )}
@@ -513,7 +513,7 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                         return (
                         <tr key={item.id} className="bg-white">
                           <td className="py-2 px-3 border border-gray-300 break-words">
-                            {cleanDescription}
+                            <span className="text-sm font-semibold">{cleanDescription}</span>
                             {item.discount_percent > 0 && (
                               <span className="ml-2 font-bold text-red-600">(Remise: {item.discount_percent}%)</span>
                             )}

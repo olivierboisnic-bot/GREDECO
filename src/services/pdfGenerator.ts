@@ -697,7 +697,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       halign: 'center'
     },
     columnStyles: {
-      0: { cellWidth: 100, overflow: 'linebreak', valign: 'top', font: 'helvetica', fontStyle: 'normal', minCellHeight: 10 },
+      0: { cellWidth: 100, overflow: 'linebreak', valign: 'top', font: 'helvetica', fontStyle: 'bold', fontSize: 9, minCellHeight: 10 },
       1: { cellWidth: 16, halign: 'center', valign: 'middle' },
       2: { cellWidth: 25, halign: 'right', valign: 'middle' },
       3: { cellWidth: 25, halign: 'right', valign: 'middle' },
