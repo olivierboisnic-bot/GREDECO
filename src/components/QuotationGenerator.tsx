@@ -1866,11 +1866,10 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     // CRITICAL: Update quantity ref BEFORE updating timepoints state
     // This ensures recalculation sees the correct manual quantity
     if (item.objective_id && service?.multiplier_type !== 'fixed' && service?.multiplier_type !== 'none') {
-      // Strip instance suffix from key to match recalculation lookup
-      const baseKey = itemKey.replace(/_instance-[^_]+$/, '');
-      console.log('💾 Storing manual quantity:', newQuantity, 'for key:', baseKey, '(original key:', itemKey + ')');
+      // Use full itemKey including instance suffix to avoid conflicts
+      console.log('💾 Storing manual quantity:', newQuantity, 'for key:', itemKey);
       const newMap = new Map(manuallyEditedQuantitiesRef.current);
-      newMap.set(baseKey, newQuantity);
+      newMap.set(itemKey, newQuantity);
       manuallyEditedQuantitiesRef.current = newMap;
       setManuallyEditedQuantities(newMap);
       console.log('💾 Map now has', newMap.size, 'entries:', Array.from(newMap.keys()));
@@ -1962,11 +1961,10 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     // CRITICAL: Update quantity ref BEFORE updating timepoints state
     // This ensures recalculation sees the correct manual quantity
     if (item.objective_id && service?.multiplier_type !== 'fixed' && service?.multiplier_type !== 'none') {
-      // Strip instance suffix from key to match recalculation lookup
-      const baseKey = itemKey.replace(/_instance-[^_]+$/, '');
-      console.log('💾 Storing manual quantity:', newQuantity, 'for key:', baseKey, '(original key:', itemKey + ')');
+      // Use full itemKey including instance suffix to avoid conflicts
+      console.log('💾 Storing manual quantity:', newQuantity, 'for key:', itemKey);
       const newMap = new Map(manuallyEditedQuantitiesRef.current);
-      newMap.set(baseKey, newQuantity);
+      newMap.set(itemKey, newQuantity);
       manuallyEditedQuantitiesRef.current = newMap;
       setManuallyEditedQuantities(newMap);
       console.log('💾 Map now has', newMap.size, 'entries:', Array.from(newMap.keys()));
@@ -1986,6 +1984,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     const item = items[itemIndex];
     const itemKey = getItemKey(item, itemIndex);
 
+    // Remove from manual timepoint overrides
     setManualTimepointOverrides(prev => {
       const newSet = new Set(prev);
       newSet.delete(itemIndex);
@@ -1996,13 +1995,6 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       const newMap = new Map(prev);
       newMap.delete(itemKey);
       return newMap;
-    });
-
-    // Remove from manual timepoint overrides
-    setManualTimepointOverrides(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(itemIndex);
-      return newSet;
     });
 
     // Reset to objective's timepoints
@@ -2055,12 +2047,10 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       updatedItems[itemIndex].amount_without_tax = amountWithoutTax;
       updatedItems[itemIndex].subtotal = amountWithoutTax * (1 + updatedItems[itemIndex].vat_percent / 100);
 
-      // Remove from manually edited quantities - use baseKey like in toggleItemTimepoint
+      // Remove from manually edited quantities
       if (item.objective_name) {
-        const baseKey = itemKey.replace(/_instance-[^_]+$/, '');
         const newMap = new Map(manuallyEditedQuantitiesRef.current);
         newMap.delete(itemKey);
-        newMap.delete(baseKey);
         manuallyEditedQuantitiesRef.current = newMap;
 
         // Then update state
