@@ -2063,11 +2063,22 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
   };
 
   const calculateTotal = () => {
-    return items.reduce((sum, item) => sum + item.subtotal, 0);
+    return items.reduce((sum, item) => {
+      const totalDiscount = (item.discount_percent || 0) + globalDiscountPercent;
+      const adjustedUnitPrice = item.unit_price * (1 - totalDiscount / 100);
+      const adjustedAmountHT = adjustedUnitPrice * item.quantity;
+      const adjustedAmountTTC = adjustedAmountHT * (1 + (item.vat_percent || 20) / 100);
+      return sum + adjustedAmountTTC;
+    }, 0);
   };
 
   const calculateTotalHT = () => {
-    return items.reduce((sum, item) => sum + item.amount_without_tax, 0);
+    return items.reduce((sum, item) => {
+      const totalDiscount = (item.discount_percent || 0) + globalDiscountPercent;
+      const adjustedUnitPrice = item.unit_price * (1 - totalDiscount / 100);
+      const adjustedAmountHT = adjustedUnitPrice * item.quantity;
+      return sum + adjustedAmountHT;
+    }, 0);
   };
 
   const calculateTotalTTC = () => {

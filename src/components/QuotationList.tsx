@@ -15,10 +15,32 @@ export default function QuotationList({ onEditQuotation }: QuotationListProps) {
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [quotationItems, setQuotationItems] = useState<QuotationItem[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [calculatedTotals, setCalculatedTotals] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     loadQuotations();
   }, []);
+
+  const calculateQuotationTotal = async (quotationId: string, globalDiscount: number) => {
+    const { data: items, error } = await supabase
+      .from('quotation_items')
+      .select('*')
+      .eq('quotation_id', quotationId);
+
+    if (error || !items) {
+      return null;
+    }
+
+    const totalTTC = items.reduce((sum, item) => {
+      const totalDiscount = (item.discount_percent || 0) + globalDiscount;
+      const adjustedUnitPrice = item.unit_price * (1 - totalDiscount / 100);
+      const adjustedAmountHT = adjustedUnitPrice * item.quantity;
+      const adjustedAmountTTC = adjustedAmountHT * (1 + (item.vat_percent || 20) / 100);
+      return sum + adjustedAmountTTC;
+    }, 0);
+
+    return totalTTC;
+  };
 
   const loadQuotations = async () => {
     const { data, error } = await supabase
@@ -40,6 +62,23 @@ export default function QuotationList({ onEditQuotation }: QuotationListProps) {
         });
       }
       setQuotations(data || []);
+
+      // Calculate totals for all quotations
+      const totalsMap = new Map<string, number>();
+      if (data) {
+        await Promise.all(
+          data.map(async (quotation) => {
+            const calculatedTotal = await calculateQuotationTotal(
+              quotation.id,
+              quotation.global_discount_percent || 0
+            );
+            if (calculatedTotal !== null) {
+              totalsMap.set(quotation.id, calculatedTotal);
+            }
+          })
+        );
+      }
+      setCalculatedTotals(totalsMap);
     }
   };
 
@@ -209,7 +248,7 @@ export default function QuotationList({ onEditQuotation }: QuotationListProps) {
                     {quotation.customer_company || '-'}
                   </td>
                   <td className="px-4 py-4 text-sm font-semibold text-gray-900">
-                    {formatCurrency(quotation.total_amount)} €
+                    {formatCurrency(calculatedTotals.get(quotation.id) ?? quotation.total_amount)} €
                   </td>
                   <td className="px-4 py-4">
                     <select
