@@ -162,15 +162,28 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
   };
 
   const calculateSubtotal = () => {
-    return items.reduce((sum, item) => sum + (item.amount_without_tax || 0), 0);
+    const globalDiscount = quotation.global_discount_percent || 0;
+    return items.reduce((sum, item) => {
+      const totalDiscount = (item.discount_percent || 0) + globalDiscount;
+      const adjustedUnitPrice = item.unit_price * (1 - totalDiscount / 100);
+      const adjustedAmountHT = adjustedUnitPrice * item.quantity;
+      return sum + adjustedAmountHT;
+    }, 0);
   };
 
   const calculateTotalVAT = () => {
-    return items.reduce((sum, item) => sum + ((item.subtotal || 0) - (item.amount_without_tax || 0)), 0);
+    const globalDiscount = quotation.global_discount_percent || 0;
+    return items.reduce((sum, item) => {
+      const totalDiscount = (item.discount_percent || 0) + globalDiscount;
+      const adjustedUnitPrice = item.unit_price * (1 - totalDiscount / 100);
+      const adjustedAmountHT = adjustedUnitPrice * item.quantity;
+      const vatAmount = adjustedAmountHT * (item.vat_percent || 20) / 100;
+      return sum + vatAmount;
+    }, 0);
   };
 
   const calculateNetTotal = () => {
-    return items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+    return calculateSubtotal() + calculateTotalVAT();
   };
 
   const { objectiveGroups, mandatoryItems } = groupItemsByObjective();
@@ -398,18 +411,24 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                           );
                         }
 
-                        const adjustedUnitPrice = item.unit_price * (1 - (item.discount_percent || 0) / 100);
+                        const globalDiscount = quotation.global_discount_percent || 0;
+                        const totalDiscount = (item.discount_percent || 0) + globalDiscount;
+                        const adjustedUnitPrice = item.unit_price * (1 - totalDiscount / 100);
+                        const adjustedAmountHT = adjustedUnitPrice * item.quantity;
                         return (
                           <tr key={`${groupIndex}-${item.id}`} className="bg-white">
                             <td className="py-2 px-3 border border-gray-300 break-words">
                               <span className="text-sm font-semibold">{cleanDescription}</span>
-                              {item.discount_percent > 0 && (
-                                <span className="ml-2 font-bold text-red-600">(Remise: {item.discount_percent}%)</span>
+                              {totalDiscount > 0 && (
+                                <span className="ml-2 font-bold text-red-600">
+                                  (Remise: {totalDiscount}%
+                                  {item.discount_percent > 0 && globalDiscount > 0 && ` = ${item.discount_percent}% + ${globalDiscount}% globale`})
+                                </span>
                               )}
                             </td>
                             <td className="py-2 px-3 border border-gray-300 text-center">{item.quantity}</td>
                             <td className="py-2 px-3 border border-gray-300 text-right whitespace-nowrap">{formatCurrency(adjustedUnitPrice)}&nbsp;€</td>
-                            <td className="py-2 px-3 border border-gray-300 text-right whitespace-nowrap">{formatCurrency(item.amount_without_tax || 0)}&nbsp;€</td>
+                            <td className="py-2 px-3 border border-gray-300 text-right whitespace-nowrap">{formatCurrency(adjustedAmountHT)}&nbsp;€</td>
                             <td className="py-2 px-3 border border-gray-300 text-center">{item.vat_percent ? `${item.vat_percent}%` : '20%'}</td>
                           </tr>
                         );
@@ -478,18 +497,24 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                           cleanDescription = cleanDescription.trim();
                         }
 
-                        const adjustedUnitPrice = item.unit_price * (1 - (item.discount_percent || 0) / 100);
+                        const globalDiscount = quotation.global_discount_percent || 0;
+                        const totalDiscount = (item.discount_percent || 0) + globalDiscount;
+                        const adjustedUnitPrice = item.unit_price * (1 - totalDiscount / 100);
+                        const adjustedAmountHT = adjustedUnitPrice * item.quantity;
                         return (
                           <tr key={item.id} className="bg-white">
                             <td className="py-2 px-3 border border-gray-300 break-words">
                               <span className="text-sm font-semibold">{cleanDescription}</span>
-                              {item.discount_percent > 0 && (
-                                <span className="ml-2 font-bold text-red-600">(Remise: {item.discount_percent}%)</span>
+                              {totalDiscount > 0 && (
+                                <span className="ml-2 font-bold text-red-600">
+                                  (Remise: {totalDiscount}%
+                                  {item.discount_percent > 0 && globalDiscount > 0 && ` = ${item.discount_percent}% + ${globalDiscount}% globale`})
+                                </span>
                               )}
                             </td>
                             <td className="py-2 px-3 border border-gray-300 text-center">{item.quantity}</td>
                             <td className="py-2 px-3 border border-gray-300 text-right whitespace-nowrap">{formatCurrency(adjustedUnitPrice)}&nbsp;€</td>
-                            <td className="py-2 px-3 border border-gray-300 text-right whitespace-nowrap">{formatCurrency(item.amount_without_tax || 0)}&nbsp;€</td>
+                            <td className="py-2 px-3 border border-gray-300 text-right whitespace-nowrap">{formatCurrency(adjustedAmountHT)}&nbsp;€</td>
                             <td className="py-2 px-3 border border-gray-300 text-center">{item.vat_percent ? `${item.vat_percent}%` : '20%'}</td>
                           </tr>
                         );
@@ -509,18 +534,24 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                           cleanDescription = cleanDescription.trim();
                         }
 
-                        const adjustedUnitPrice = item.unit_price * (1 - (item.discount_percent || 0) / 100);
+                        const globalDiscount = quotation.global_discount_percent || 0;
+                        const totalDiscount = (item.discount_percent || 0) + globalDiscount;
+                        const adjustedUnitPrice = item.unit_price * (1 - totalDiscount / 100);
+                        const adjustedAmountHT = adjustedUnitPrice * item.quantity;
                         return (
                         <tr key={item.id} className="bg-white">
                           <td className="py-2 px-3 border border-gray-300 break-words">
                             <span className="text-sm font-semibold">{cleanDescription}</span>
-                            {item.discount_percent > 0 && (
-                              <span className="ml-2 font-bold text-red-600">(Remise: {item.discount_percent}%)</span>
+                            {totalDiscount > 0 && (
+                              <span className="ml-2 font-bold text-red-600">
+                                (Remise: {totalDiscount}%
+                                {item.discount_percent > 0 && globalDiscount > 0 && ` = ${item.discount_percent}% + ${globalDiscount}% globale`})
+                              </span>
                             )}
                           </td>
                           <td className="py-2 px-3 border border-gray-300 text-center">{item.quantity}</td>
                           <td className="py-2 px-3 border border-gray-300 text-right whitespace-nowrap">{adjustedUnitPrice.toFixed(2)}&nbsp;€</td>
-                          <td className="py-2 px-3 border border-gray-300 text-right whitespace-nowrap">{(item.amount_without_tax || 0).toFixed(2)}&nbsp;€</td>
+                          <td className="py-2 px-3 border border-gray-300 text-right whitespace-nowrap">{adjustedAmountHT.toFixed(2)}&nbsp;€</td>
                           <td className="py-2 px-3 border border-gray-300 text-center">{item.vat_percent ? `${item.vat_percent}%` : '20%'}</td>
                         </tr>
                         );

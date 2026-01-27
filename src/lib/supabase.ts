@@ -52,6 +52,7 @@ export interface Quotation {
   skin_types?: string;
   timepoints: string;
   vat_rate: number;
+  global_discount_percent?: number;
   created_at: string;
   updated_at: string;
 }

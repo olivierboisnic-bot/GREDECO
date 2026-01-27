@@ -579,17 +579,25 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       // Replace multiple spaces with single space
       cleanDesc = cleanDesc.replace(/\s+/g, ' ').trim();
 
-      if (item.discount_percent > 0) {
-        cleanDesc += ` (Remise: ${item.discount_percent}%)`;
+      const globalDiscount = quotation.global_discount_percent || 0;
+      const totalDiscount = (item.discount_percent || 0) + globalDiscount;
+
+      if (totalDiscount > 0) {
+        cleanDesc += ` (Remise: ${totalDiscount}%`;
+        if (item.discount_percent > 0 && globalDiscount > 0) {
+          cleanDesc += ` = ${item.discount_percent}% + ${globalDiscount}% globale`;
+        }
+        cleanDesc += ')';
       }
 
-      const adjustedUnitPrice = (item.unit_price || 0) * (1 - (item.discount_percent || 0) / 100);
+      const adjustedUnitPrice = (item.unit_price || 0) * (1 - totalDiscount / 100);
+      const adjustedAmountHT = adjustedUnitPrice * item.quantity;
 
       tableData.push([
         cleanDesc,
         item.quantity || '',
         `${formatCurrency(adjustedUnitPrice)} €`,
-        `${formatCurrency(item.amount_without_tax || 0)} €`,
+        `${formatCurrency(adjustedAmountHT)} €`,
         `${item.vat_percent || 20}%`
       ]);
     });
@@ -647,25 +655,45 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       // Replace multiple spaces with single space
       cleanDesc = cleanDesc.replace(/\s+/g, ' ').trim();
 
-      if (item.discount_percent > 0) {
-        cleanDesc += ` (Remise: ${item.discount_percent}%)`;
+      const globalDiscount = quotation.global_discount_percent || 0;
+      const totalDiscount = (item.discount_percent || 0) + globalDiscount;
+
+      if (totalDiscount > 0) {
+        cleanDesc += ` (Remise: ${totalDiscount}%`;
+        if (item.discount_percent > 0 && globalDiscount > 0) {
+          cleanDesc += ` = ${item.discount_percent}% + ${globalDiscount}% globale`;
+        }
+        cleanDesc += ')';
       }
 
-      const adjustedUnitPrice = (item.unit_price || 0) * (1 - (item.discount_percent || 0) / 100);
+      const adjustedUnitPrice = (item.unit_price || 0) * (1 - totalDiscount / 100);
+      const adjustedAmountHT = adjustedUnitPrice * item.quantity;
 
       tableData.push([
         cleanDesc,
         item.quantity || '',
         `${formatCurrency(adjustedUnitPrice)} €`,
-        `${formatCurrency(item.amount_without_tax || 0)} €`,
+        `${formatCurrency(adjustedAmountHT)} €`,
         `${item.vat_percent || 20}%`
       ]);
     });
   }
 
-  const subtotal = items.reduce((sum, item) => sum + (item.amount_without_tax || 0), 0);
-  const totalVAT = items.reduce((sum, item) => sum + ((item.subtotal || 0) - (item.amount_without_tax || 0)), 0);
-  const totalTTC = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+  const globalDiscount = quotation.global_discount_percent || 0;
+  const subtotal = items.reduce((sum, item) => {
+    const totalDiscount = (item.discount_percent || 0) + globalDiscount;
+    const adjustedUnitPrice = (item.unit_price || 0) * (1 - totalDiscount / 100);
+    const adjustedAmountHT = adjustedUnitPrice * item.quantity;
+    return sum + adjustedAmountHT;
+  }, 0);
+  const totalVAT = items.reduce((sum, item) => {
+    const totalDiscount = (item.discount_percent || 0) + globalDiscount;
+    const adjustedUnitPrice = (item.unit_price || 0) * (1 - totalDiscount / 100);
+    const adjustedAmountHT = adjustedUnitPrice * item.quantity;
+    const vatAmount = adjustedAmountHT * (item.vat_percent || 20) / 100;
+    return sum + vatAmount;
+  }, 0);
+  const totalTTC = subtotal + totalVAT;
 
   autoTable(pdf, {
     startY: yPos,

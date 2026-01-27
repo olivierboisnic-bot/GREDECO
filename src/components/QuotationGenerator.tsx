@@ -47,6 +47,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
   const [notes, setNotes] = useState('');
   const [validDays, setValidDays] = useState(30);
   const [vatRate, setVatRate] = useState(20);
+  const [globalDiscountPercent, setGlobalDiscountPercent] = useState(0);
   const [studyDesign, setStudyDesign] = useState<StudyDesign | null>({
     studyType: 'in_vivo',
     numberOfPanelists: 30,
@@ -772,6 +773,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     setManualTimepointsByItemKey(loadedTimepointsByItemKey);
     setItems(loadedItems);
     setVatRate(quotation.vat_rate || 20);
+    setGlobalDiscountPercent(quotation.global_discount_percent || 0);
     setNotes(quotation.notes || '');
     setLoadedItemKeys(loadedKeys);
 
@@ -2190,6 +2192,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       skin_types: studyDesign?.skinTypes?.length > 0 ? studyDesign.skinTypes.join(', ') : '',
       timepoints: `T0, T${studyDesign?.numberOfTimepoints || 0}`,
       vat_rate: vatRate,
+      global_discount_percent: globalDiscountPercent,
     };
 
     console.log('Quotation payload:', quotationPayload);
@@ -3259,6 +3262,25 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
               />
             </div>
           </div>
+        </div>
+
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <label className="block text-sm font-semibold text-gray-900 mb-2">
+            Remise Globale (%)
+          </label>
+          <input
+            type="number"
+            value={globalDiscountPercent}
+            onChange={(e) => setGlobalDiscountPercent(Math.max(0, Math.min(100, Number(e.target.value))))}
+            className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+            min="0"
+            max="100"
+            step="0.1"
+            placeholder="0"
+          />
+          <p className="text-xs text-gray-600 mt-1">
+            Cette remise s'appliquera à tous les services du devis
+          </p>
         </div>
 
         <div className="flex justify-between items-center pt-6 border-t-2 border-gray-300">
