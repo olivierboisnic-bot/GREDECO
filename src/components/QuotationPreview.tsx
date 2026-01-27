@@ -639,7 +639,7 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                     Les modalités de règlement du montant total du devis s'établiront comme suit :
                   </p>
                   <p className="text-gray-700 leading-relaxed mb-1">
-                    <span className="font-semibold">Acompte :</span> Un acompte de 50% du montant total du devis sera exigible à la signature du devis.
+                    <span className="font-semibold">Acompte :</span> Un acompte de 50% du montant total du devis sera exigible à la signature du devis, paiement sous quinzaine.
                   </p>
                   <p className="text-gray-700 leading-relaxed mb-2">
                     <span className="font-semibold">Solde :</span> Le solde restant, soit 50% du montant total, sera réglé à 30 jours à compter de la date d'émission du rapport d'étude final.
