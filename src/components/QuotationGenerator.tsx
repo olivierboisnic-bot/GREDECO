@@ -2009,12 +2009,6 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       }));
 
       // Recalculate quantity based on objective's timepoints
-      const updatedItems = [...items];
-      updatedItems[itemIndex] = {
-        ...updatedItems[itemIndex],
-        objective_timepoints: objectiveTimepoints.join(', '),
-      };
-
       const service = services.find(s => s.id === item.service_id);
       const panelists = studyDesign?.numberOfPanelists || 30;
       const isInVivo = studyDesign?.studyType === 'in_vivo';
@@ -2043,10 +2037,21 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         }
       }
 
-      updatedItems[itemIndex].quantity = newQuantity;
-      const amountWithoutTax = newQuantity * updatedItems[itemIndex].unit_price * (1 - updatedItems[itemIndex].discount_percent / 100);
-      updatedItems[itemIndex].amount_without_tax = amountWithoutTax;
-      updatedItems[itemIndex].subtotal = amountWithoutTax * (1 + updatedItems[itemIndex].vat_percent / 100);
+      // Calculate amounts with both individual and global discounts
+      const totalDiscount = (item.discount_percent || 0) + globalDiscountPercent;
+      const adjustedUnitPrice = item.unit_price * (1 - totalDiscount / 100);
+      const amountWithoutTax = newQuantity * adjustedUnitPrice;
+      const subtotal = amountWithoutTax * (1 + (item.vat_percent || 20) / 100);
+
+      // Create a new object to ensure React detects the change
+      const updatedItems = [...items];
+      updatedItems[itemIndex] = {
+        ...updatedItems[itemIndex],
+        objective_timepoints: objectiveTimepoints.join(', '),
+        quantity: newQuantity,
+        amount_without_tax: amountWithoutTax,
+        subtotal: subtotal,
+      };
 
       // Remove from manually edited quantities - update ref FIRST
       if (item.objective_name) {
