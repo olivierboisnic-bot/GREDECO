@@ -771,6 +771,15 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       if (data.cell.raw && typeof data.cell.raw === 'string') {
         data.cell.text = [data.cell.raw.normalize('NFC')];
       }
+
+      // Adjust cell height if image is present
+      if (data.column.index === 0 && data.section === 'body') {
+        const imgData = imageData[data.row.index];
+        if (imgData) {
+          // Set minimum height to accommodate text + image + padding
+          data.cell.styles.minCellHeight = 35;
+        }
+      }
     },
     didDrawCell: (data: any) => {
       // Draw images in the first column if available
@@ -780,15 +789,23 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
           const cellX = data.cell.x;
           const cellY = data.cell.y;
           const cellWidth = data.cell.width;
-          const textHeight = data.cell.text.length * 4;
-          const imageY = cellY + textHeight + 2;
-          const maxImageHeight = 25;
+          const cellHeight = data.cell.height;
+
+          // Calculate text height (each line is approximately 3.5-4mm in height with fontSize 9)
+          const lineHeight = 3.5;
+          const textHeight = data.cell.text.length * lineHeight;
+          const imageY = cellY + textHeight + 3;
+
+          // Image dimensions
+          const maxImageHeight = Math.min(25, cellHeight - textHeight - 6);
           const maxImageWidth = cellWidth - 6;
 
-          try {
-            pdf.addImage(imgData, 'PNG', cellX + 3, imageY, maxImageWidth, maxImageHeight, undefined, 'FAST');
-          } catch (error) {
-            console.error('Error adding image to PDF:', error);
+          if (maxImageHeight > 5) {
+            try {
+              pdf.addImage(imgData, 'PNG', cellX + 3, imageY, maxImageWidth, maxImageHeight, undefined, 'FAST');
+            } catch (error) {
+              console.error('Error adding image to PDF:', error);
+            }
           }
         }
       }
