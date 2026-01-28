@@ -65,7 +65,8 @@ const wrapText = (pdf: jsPDF, text: string, maxWidth: number): string[] => {
 const loadImageAsBase64 = (url: string): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    // Note: crossOrigin removed as CloudFront doesn't provide CORS headers
+    // Images are public and can be loaded without CORS
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas');
@@ -75,7 +76,7 @@ const loadImageAsBase64 = (url: string): Promise<string> => {
         if (ctx) {
           ctx.drawImage(img, 0, 0);
           const dataUrl = canvas.toDataURL('image/png');
-          console.log('Image loaded successfully:', url);
+          console.log('Image loaded successfully:', url, 'size:', dataUrl.length);
           resolve(dataUrl);
         } else {
           console.error('Failed to get canvas context for:', url);
