@@ -617,6 +617,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       console.log(`Objective item ${imageIndex}: rowIndex=${rowIndex}, hasImage=${!!imgData}, imageLength=${imgData?.length || 0}`);
       if (imgData) {
         imageData[rowIndex] = imgData;
+        console.log(`  → Mapped image to row ${rowIndex}`);
       }
       imageIndex++;
 
@@ -698,8 +699,10 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
 
       const rowIndex = tableData.length;
       const imgData = loadedImages[imageIndex];
+      console.log(`Mandatory item ${imageIndex}: rowIndex=${rowIndex}, hasImage=${!!imgData}, imageLength=${imgData?.length || 0}`);
       if (imgData) {
         imageData[rowIndex] = imgData;
+        console.log(`  → Mapped image to row ${rowIndex}`);
       }
       imageIndex++;
 
@@ -774,6 +777,11 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       // Ensure text content is properly normalized
       if (data.cell.raw && typeof data.cell.raw === 'string') {
         data.cell.text = [data.cell.raw.normalize('NFC')];
+      }
+
+      // Log all body rows to understand indexing
+      if (data.section === 'body' && data.column.index === 0) {
+        console.log(`Parse row ${data.row.index}: colSpan=${data.cell.colSpan}, text="${data.cell.text[0]?.substring(0, 30)}..."`);
       }
 
       // Adjust cell height if image is present
