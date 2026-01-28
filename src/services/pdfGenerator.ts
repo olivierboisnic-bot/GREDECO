@@ -534,6 +534,24 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   const { objectiveGroups, mandatoryItems } = groupItemsByObjective(items, quotation);
 
   const tableData: any[] = [];
+  const imageData: { [key: number]: string } = {};
+
+  // Load all images first
+  const allItems = [...objectiveGroups.flatMap(g => g.items), ...mandatoryItems];
+  const imagePromises = allItems.map(async (item) => {
+    if (item.image_url) {
+      try {
+        return await loadImageAsBase64(item.image_url);
+      } catch (error) {
+        console.error('Failed to load image:', item.image_url, error);
+        return '';
+      }
+    }
+    return '';
+  });
+
+  const loadedImages = await Promise.all(imagePromises);
+  let imageIndex = 0;
 
   // Add objectives first
   objectiveGroups.forEach((group) => {
@@ -592,6 +610,13 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
 
       const adjustedUnitPrice = (item.unit_price || 0) * (1 - totalDiscount / 100);
       const adjustedAmountHT = adjustedUnitPrice * item.quantity;
+
+      const rowIndex = tableData.length;
+      const imgData = loadedImages[imageIndex];
+      if (imgData) {
+        imageData[rowIndex] = imgData;
+      }
+      imageIndex++;
 
       tableData.push([
         cleanDesc,
@@ -669,6 +694,13 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       const adjustedUnitPrice = (item.unit_price || 0) * (1 - totalDiscount / 100);
       const adjustedAmountHT = adjustedUnitPrice * item.quantity;
 
+      const rowIndex = tableData.length;
+      const imgData = loadedImages[imageIndex];
+      if (imgData) {
+        imageData[rowIndex] = imgData;
+      }
+      imageIndex++;
+
       tableData.push([
         cleanDesc,
         item.quantity || '',
@@ -738,6 +770,27 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       // Ensure text content is properly normalized
       if (data.cell.raw && typeof data.cell.raw === 'string') {
         data.cell.text = [data.cell.raw.normalize('NFC')];
+      }
+    },
+    didDrawCell: (data: any) => {
+      // Draw images in the first column if available
+      if (data.column.index === 0 && data.section === 'body') {
+        const imgData = imageData[data.row.index];
+        if (imgData) {
+          const cellX = data.cell.x;
+          const cellY = data.cell.y;
+          const cellWidth = data.cell.width;
+          const textHeight = data.cell.text.length * 4;
+          const imageY = cellY + textHeight + 2;
+          const maxImageHeight = 25;
+          const maxImageWidth = cellWidth - 6;
+
+          try {
+            pdf.addImage(imgData, 'PNG', cellX + 3, imageY, maxImageWidth, maxImageHeight, undefined, 'FAST');
+          } catch (error) {
+            console.error('Error adding image to PDF:', error);
+          }
+        }
       }
     },
     didDrawPage: (data: any) => {

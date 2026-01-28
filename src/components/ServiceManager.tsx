@@ -12,6 +12,7 @@ export default function ServiceManager() {
     name: '',
     appareil: '',
     langues: '',
+    image_url: '',
     base_price: '',
     tva_rate: '20',
     unit: 'unit',
@@ -50,6 +51,7 @@ export default function ServiceManager() {
       name: formData.name,
       appareil: formData.appareil,
       langues: formData.langues,
+      image_url: formData.image_url || null,
       base_price: parseFloat(formData.base_price),
       tva_rate: parseFloat(formData.tva_rate),
       unit: formData.unit,
@@ -95,6 +97,7 @@ export default function ServiceManager() {
       name: service.name,
       appareil: service.appareil,
       langues: service.langues || '',
+      image_url: service.image_url || '',
       base_price: service.base_price.toString(),
       tva_rate: service.tva_rate?.toString() || '20',
       unit: service.unit,
@@ -153,6 +156,7 @@ export default function ServiceManager() {
       name: '',
       appareil: '',
       langues: '',
+      image_url: '',
       base_price: '',
       tva_rate: '20',
       unit: 'unit',
@@ -611,6 +615,31 @@ export default function ServiceManager() {
                   placeholder="FR, EN, etc."
                 />
               </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                URL de l'Image (optionnel)
+              </label>
+              <input
+                type="url"
+                value={formData.image_url}
+                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="https://exemple.com/image.jpg"
+              />
+              {formData.image_url && (
+                <div className="mt-2">
+                  <img
+                    src={formData.image_url}
+                    alt="Preview"
+                    className="max-w-xs max-h-40 object-contain border border-gray-200 rounded"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

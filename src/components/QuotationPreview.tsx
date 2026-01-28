@@ -425,6 +425,18 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                                   {item.discount_percent > 0 && globalDiscount > 0 && ` = ${item.discount_percent}% + ${globalDiscount}% globale`})
                                 </span>
                               )}
+                              {item.image_url && (
+                                <div className="mt-2">
+                                  <img
+                                    src={item.image_url}
+                                    alt={cleanDescription}
+                                    className="max-w-full max-h-32 object-contain"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              )}
                             </td>
                             <td className="py-2 px-3 border border-gray-300 text-center">{item.quantity}</td>
                             <td className="py-2 px-3 border border-gray-300 text-right whitespace-nowrap">{formatCurrency(adjustedUnitPrice)}&nbsp;€</td>
@@ -511,6 +523,18 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                                   {item.discount_percent > 0 && globalDiscount > 0 && ` = ${item.discount_percent}% + ${globalDiscount}% globale`})
                                 </span>
                               )}
+                              {item.image_url && (
+                                <div className="mt-2">
+                                  <img
+                                    src={item.image_url}
+                                    alt={cleanDescription}
+                                    className="max-w-full max-h-32 object-contain"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              )}
                             </td>
                             <td className="py-2 px-3 border border-gray-300 text-center">{item.quantity}</td>
                             <td className="py-2 px-3 border border-gray-300 text-right whitespace-nowrap">{formatCurrency(adjustedUnitPrice)}&nbsp;€</td>
@@ -547,6 +571,18 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                                 (Remise: {totalDiscount}%
                                 {item.discount_percent > 0 && globalDiscount > 0 && ` = ${item.discount_percent}% + ${globalDiscount}% globale`})
                               </span>
+                            )}
+                            {item.image_url && (
+                              <div className="mt-2">
+                                <img
+                                  src={item.image_url}
+                                  alt={cleanDescription}
+                                  className="max-w-full max-h-32 object-contain"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              </div>
                             )}
                           </td>
                           <td className="py-2 px-3 border border-gray-300 text-center">{item.quantity}</td>

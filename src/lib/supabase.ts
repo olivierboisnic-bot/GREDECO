@@ -14,6 +14,7 @@ export interface Service {
   name: string;
   appareil: string;
   langues?: string;
+  image_url?: string;
   base_price: number;
   tva_rate?: number;
   unit: string;
@@ -63,6 +64,7 @@ export interface QuotationItem {
   service_id?: string;
   service_name: string;
   description: string;
+  image_url?: string;
   quantity: number;
   unit_price: number;
   discount_percent: number;
