@@ -552,7 +552,12 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   });
 
   const loadedImages = await Promise.all(imagePromises);
+  console.log('=== IMAGE LOADING DEBUG (v3) ===');
+  console.log('Total items with images:', imagePromises.length);
   console.log('Loaded images count:', loadedImages.filter(img => img).length, 'out of', loadedImages.length);
+  loadedImages.forEach((img, idx) => {
+    console.log(`  Image ${idx}: loaded=${!!img}, length=${img ? img.length : 0}`);
+  });
   let imageIndex = 0;
 
   // Add objectives first
@@ -717,7 +722,12 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     });
   }
 
-  console.log('Final imageData mapping:', Object.keys(imageData).map(k => `Row ${k}: ${imageData[parseInt(k)].substring(0, 50)}...`));
+  console.log('=== FINAL IMAGE MAPPING ===');
+  console.log('ImageData keys:', Object.keys(imageData));
+  Object.keys(imageData).forEach(k => {
+    console.log(`  Row ${k}: ${imageData[parseInt(k)].substring(0, 60)}...`);
+  });
+  console.log('Total tableData rows:', tableData.length);
 
   const globalDiscount = quotation.global_discount_percent || 0;
   const subtotal = items.reduce((sum, item) => {
@@ -806,8 +816,10 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       // Draw images in the first column if available
       if (data.column.index === 0 && data.section === 'body') {
         const imgData = imageData[data.row.index];
-        console.log(`Drawing row ${data.row.index}: hasImage=${!!imgData}, cellHeight=${data.cell.height}, textLines=${data.cell.text.length}`);
+        console.log(`Drawing row ${data.row.index}: hasImage=${!!imgData}, cellHeight=${data.cell.height}, textLines=${data.cell.text.length}, text="${data.cell.text[0]?.substring(0, 30)}..."`);
         if (imgData) {
+          console.log(`  → Found image for row ${data.row.index}, length=${imgData.length}`);
+
           const cellX = data.cell.x;
           const cellY = data.cell.y;
           const cellWidth = data.cell.width;
