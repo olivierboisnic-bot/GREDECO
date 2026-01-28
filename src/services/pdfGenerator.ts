@@ -551,6 +551,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   });
 
   const loadedImages = await Promise.all(imagePromises);
+  console.log('Loaded images count:', loadedImages.filter(img => img).length, 'out of', loadedImages.length);
   let imageIndex = 0;
 
   // Add objectives first
@@ -613,6 +614,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
 
       const rowIndex = tableData.length;
       const imgData = loadedImages[imageIndex];
+      console.log(`Objective item ${imageIndex}: rowIndex=${rowIndex}, hasImage=${!!imgData}, imageLength=${imgData?.length || 0}`);
       if (imgData) {
         imageData[rowIndex] = imgData;
       }
@@ -711,6 +713,8 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     });
   }
 
+  console.log('Final imageData mapping:', Object.keys(imageData).map(k => `Row ${k}: ${imageData[parseInt(k)].substring(0, 50)}...`));
+
   const globalDiscount = quotation.global_discount_percent || 0;
   const subtotal = items.reduce((sum, item) => {
     const totalDiscount = (item.discount_percent || 0) + globalDiscount;
@@ -776,8 +780,16 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       if (data.column.index === 0 && data.section === 'body') {
         const imgData = imageData[data.row.index];
         if (imgData) {
+          // Calculate required height based on text lines
+          const lineHeight = 3.5;
+          const textHeight = data.cell.text.length * lineHeight;
+          const imageHeight = 25;
+          const padding = 10;
+          const requiredHeight = textHeight + imageHeight + padding;
+
           // Set minimum height to accommodate text + image + padding
-          data.cell.styles.minCellHeight = 35;
+          data.cell.styles.minCellHeight = Math.max(35, requiredHeight);
+          console.log(`Cell ${data.row.index}: ${data.cell.text.length} lines, setting minHeight to ${data.cell.styles.minCellHeight}`);
         }
       }
     },
@@ -785,6 +797,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       // Draw images in the first column if available
       if (data.column.index === 0 && data.section === 'body') {
         const imgData = imageData[data.row.index];
+        console.log(`Drawing row ${data.row.index}: hasImage=${!!imgData}, cellHeight=${data.cell.height}, textLines=${data.cell.text.length}`);
         if (imgData) {
           const cellX = data.cell.x;
           const cellY = data.cell.y;
@@ -800,12 +813,17 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
           const maxImageHeight = Math.min(25, cellHeight - textHeight - 6);
           const maxImageWidth = cellWidth - 6;
 
+          console.log(`  → Image size: ${maxImageWidth}x${maxImageHeight}, at position (${cellX + 3}, ${imageY})`);
+
           if (maxImageHeight > 5) {
             try {
               pdf.addImage(imgData, 'PNG', cellX + 3, imageY, maxImageWidth, maxImageHeight, undefined, 'FAST');
+              console.log('  → Image added successfully');
             } catch (error) {
               console.error('Error adding image to PDF:', error);
             }
+          } else {
+            console.log('  → Image skipped (maxImageHeight too small)');
           }
         }
       }
