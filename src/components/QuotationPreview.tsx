@@ -81,6 +81,7 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
       console.log('QuotationPreview - Quotation object:', {
         id: quotation.id,
         quotation_number: quotation.quotation_number,
+        language: quotation.language,
         study_objectives: quotation.study_objectives,
         product_description: quotation.product_description,
         inclusion_criteria: quotation.inclusion_criteria,

@@ -212,14 +212,12 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     const language = (quotation.language || 'fr') as Language;
     const t = getTranslations(language);
 
-    console.log('PDF Generation - Quotation data:', {
-      language,
-      study_objectives: quotation.study_objectives,
-      product_description: quotation.product_description,
-      inclusion_criteria: quotation.inclusion_criteria,
-      exclusion_criteria: quotation.exclusion_criteria,
-      skin_types: quotation.skin_types
-    });
+    console.log('=== PDF GENERATION DEBUG ===');
+    console.log('Raw quotation.language value:', quotation.language);
+    console.log('Detected language (after default):', language);
+    console.log('Using translations for language:', language);
+    console.log('Translation sample - date label:', t.date);
+    console.log('Translation sample - study label:', t.study);
 
     const warnings: string[] = [];
 
