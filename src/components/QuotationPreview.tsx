@@ -77,18 +77,6 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
 
   const handleDownloadPDF = async () => {
     try {
-      console.log('QuotationPreview - Starting PDF generation');
-      console.log('QuotationPreview - Quotation object:', {
-        id: quotation.id,
-        quotation_number: quotation.quotation_number,
-        language: quotation.language,
-        study_objectives: quotation.study_objectives,
-        product_description: quotation.product_description,
-        inclusion_criteria: quotation.inclusion_criteria,
-        exclusion_criteria: quotation.exclusion_criteria,
-        skin_types: quotation.skin_types
-      });
-      console.log('QuotationPreview - Items count:', items.length);
       const pdf = await generateQuotationPDF(quotation, items);
       pdf.save(generateFilename());
     } catch (error) {

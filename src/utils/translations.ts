@@ -9,6 +9,9 @@ interface Translations {
   studyObjectives: string;
   numberOfPanelists: string;
   numberOfSkinFibroblast: string;
+  inclusionCriteria: string;
+  exclusionCriteria: string;
+  skinTypes: string;
   description: string;
   unit: string;
   unitPriceExclTax: string;
@@ -42,6 +45,9 @@ export const translations: Record<Language, Translations> = {
     studyObjectives: 'Objectifs de l\'Étude:',
     numberOfPanelists: 'Nombre de Panélistes:',
     numberOfSkinFibroblast: 'Nombre de Peau/Fibroblaste:',
+    inclusionCriteria: 'Critères d\'Inclusion:',
+    exclusionCriteria: 'Critères d\'Exclusion:',
+    skinTypes: 'Types de Peau (Phototypes):',
     description: 'Description',
     unit: 'Unité',
     unitPriceExclTax: 'Prix U HT',
@@ -114,6 +120,9 @@ export const translations: Record<Language, Translations> = {
     studyObjectives: 'Study Objectives:',
     numberOfPanelists: 'Number of Panelists:',
     numberOfSkinFibroblast: 'Number of Skin/Fibroblast:',
+    inclusionCriteria: 'Inclusion Criteria:',
+    exclusionCriteria: 'Exclusion Criteria:',
+    skinTypes: 'Skin Types (Phototypes):',
     description: 'Description',
     unit: 'Unit',
     unitPriceExclTax: 'Unit Price Excl. VAT',
@@ -180,11 +189,5 @@ export const translations: Record<Language, Translations> = {
 };
 
 export const getTranslations = (language: Language): Translations => {
-  console.log('getTranslations called with language:', language);
-  console.log('Available languages:', Object.keys(translations));
-  console.log('Language exists in translations?', language in translations);
-  const result = translations[language] || translations.fr;
-  console.log('Returning translations for:', language in translations ? language : 'fr (default)');
-  console.log('Sample translation - date:', result.date);
-  return result;
+  return translations[language] || translations.fr;
 };

@@ -212,13 +212,6 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     const language = (quotation.language || 'fr') as Language;
     const t = getTranslations(language);
 
-    console.log('=== PDF GENERATION DEBUG ===');
-    console.log('Raw quotation.language value:', quotation.language);
-    console.log('Detected language (after default):', language);
-    console.log('Using translations for language:', language);
-    console.log('Translation sample - date label:', t.date);
-    console.log('Translation sample - study label:', t.study);
-
     const warnings: string[] = [];
 
     if (quotation.study_title && quotation.study_title.length > 200) {
@@ -500,7 +493,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
 
     if (quotation.inclusion_criteria) {
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Critères d\'Inclusion:', margin + padding, designY);
+      pdf.text(t.inclusionCriteria, margin + padding, designY);
       pdf.setFont('helvetica', 'normal');
       const incLines = pdf.splitTextToSize(quotation.inclusion_criteria, contentWidth);
       pdf.text(incLines, margin + labelWidth, designY);
@@ -509,7 +502,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
 
     if (quotation.exclusion_criteria) {
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Critères d\'Exclusion:', margin + padding, designY);
+      pdf.text(t.exclusionCriteria, margin + padding, designY);
       pdf.setFont('helvetica', 'normal');
       const excLines = pdf.splitTextToSize(quotation.exclusion_criteria, contentWidth);
       pdf.text(excLines, margin + labelWidth, designY);
@@ -518,7 +511,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
 
     if (quotation.skin_types) {
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Types de Peau (Phototypes):', margin + padding, designY);
+      pdf.text(t.skinTypes, margin + padding, designY);
       pdf.setFont('helvetica', 'normal');
       // Clean up skin types by removing "Phototype" or "Phototypes" prefix and duplicates
       const cleanedSkinTypes = Array.from(new Set(quotation.skin_types

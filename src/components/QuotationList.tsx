@@ -96,10 +96,6 @@ export default function QuotationList({ onEditQuotation }: QuotationListProps) {
   };
 
   const handleView = async (quotation: Quotation) => {
-    console.log('=== QUOTATION LIST - HANDLE VIEW ===');
-    console.log('Full quotation object:', quotation);
-    console.log('Language field value:', quotation.language);
-    console.log('Language field type:', typeof quotation.language);
     setSelectedQuotation(quotation);
     await loadQuotationItems(quotation.id);
     setShowPreview(true);
