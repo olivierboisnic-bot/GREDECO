@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Quotation, QuotationItem } from '../lib/supabase';
 import { formatCurrencyForPDF as formatCurrency } from '../utils/numberFormat';
+import { getTranslations, Language } from '../utils/translations';
 
 interface ObjectiveGroup {
   name: string;
@@ -208,7 +209,11 @@ const groupItemsByObjective = (items: QuotationItem[], quotation: Quotation): { 
 
 export async function generateQuotationPDF(quotation: Quotation, items: QuotationItem[]): Promise<jsPDF> {
   try {
+    const language = (quotation.language || 'fr') as Language;
+    const t = getTranslations(language);
+
     console.log('PDF Generation - Quotation data:', {
+      language,
       study_objectives: quotation.study_objectives,
       product_description: quotation.product_description,
       inclusion_criteria: quotation.inclusion_criteria,
@@ -299,7 +304,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
 
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('Date:', margin + 3, yPos + 6);
+  pdf.text(t.date, margin + 3, yPos + 6);
   pdf.setFont('helvetica', 'normal');
   const date = quotation.quotation_date
     ? new Date(quotation.quotation_date).toLocaleDateString('fr-FR')
@@ -307,7 +312,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   pdf.text(date, margin + 3, yPos + 11);
 
   pdf.setFont('helvetica', 'bold');
-  pdf.text('N° Devis:', margin + 3, yPos + 17);
+  pdf.text(t.quoteNumber, margin + 3, yPos + 17);
   pdf.setFont('helvetica', 'normal');
   pdf.text(quotation.quotation_number || 'N/A', margin + 3, yPos + 22);
 
@@ -320,7 +325,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(100, 100, 100);
-  pdf.text('Étude:', rightBoxX + 3, yPos + 6);
+  pdf.text(t.study, rightBoxX + 3, yPos + 6);
 
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(11);
@@ -358,7 +363,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
 
   // Client info in left box
   pdf.setFont('helvetica', 'bold');
-  pdf.text('Client:', margin + 3, yPos + 28);
+  pdf.text(t.client, margin + 3, yPos + 28);
   pdf.setFont('helvetica', 'normal');
   let clientYPos = yPos + 33;
   pdf.text(quotation.customer_name || 'Client', margin + 3, clientYPos);
@@ -444,7 +449,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     let designY = yPos + 7;
-    pdf.text('DESIGN DE L\'ÉTUDE', margin + padding, designY);
+    pdf.text(t.studyDesign, margin + padding, designY);
     designY += 8;
 
     pdf.setTextColor(0, 0, 0);
@@ -461,7 +466,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
 
     if (quotation.study_objectives) {
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Objectifs de l\'Étude:', margin + padding, designY);
+      pdf.text(t.studyObjectives, margin + padding, designY);
       pdf.setFont('helvetica', 'normal');
       const objLines = pdf.splitTextToSize(quotation.study_objectives, contentWidth);
       pdf.text(objLines, margin + labelWidth, designY);
@@ -480,7 +485,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     // Add study parameters (panelists/peau and conditions)
     if (quotation.number_of_volunteers && quotation.number_of_volunteers > 0) {
       pdf.setFont('helvetica', 'bold');
-      const label = isExVivo ? 'Nombre de Peau/Fibroblaste:' : 'Nombre de Panélistes:';
+      const label = isExVivo ? t.numberOfSkinFibroblast : t.numberOfPanelists;
       pdf.text(label, margin + padding, designY);
       pdf.setFont('helvetica', 'normal');
       pdf.text(quotation.number_of_volunteers.toString(), margin + labelWidth, designY);
@@ -564,7 +569,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   objectiveGroups.forEach((group) => {
     tableData.push([
       {
-        content: `OBJECTIF ${group.items[0]?.description?.match(/OBJECTIF\s+(\d+)/)?.[1] || ''}: ${group.name.toUpperCase()}`,
+        content: `${t.objective} ${group.items[0]?.description?.match(/OBJECTIF\s+(\d+)/)?.[1] || ''}: ${group.name.toUpperCase()}`,
         colSpan: 5,
         styles: { fillColor: [220, 230, 250], fontStyle: 'bold', fontSize: 9 }
       }
@@ -573,7 +578,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     if (group.timepoints) {
       tableData.push([
         {
-          content: `Temps de mesure/Durée: ${group.timepoints}`,
+          content: `${t.measurementTimeDuration} ${group.timepoints}`,
           colSpan: 5,
           styles: { fillColor: [240, 245, 255], fontStyle: 'italic', fontSize: 8 }
         }
@@ -644,7 +649,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     // Add a separator header for mandatory services
     tableData.push([
       {
-        content: 'SERVICES OBLIGATOIRES',
+        content: t.mandatoryServices,
         colSpan: 5,
         styles: { fillColor: [220, 230, 250], fontStyle: 'bold', fontSize: 9 }
       }
@@ -658,7 +663,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     // If Indemnisation is not present, add "Fournis par le client" row
     if (!hasIndemnisation) {
       tableData.push([
-        'Indemnisation des panélistes - Fournis par le client',
+        t.panelistsCompensationProvidedByClient,
         '-',
         '-',
         '-',
@@ -748,11 +753,11 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   autoTable(pdf, {
     startY: yPos,
     head: [[
-      { content: 'Description', styles: { halign: 'left' } },
-      'Unité',
-      'Prix U HT',
-      'Prix T HT',
-      'TVA'
+      { content: t.description, styles: { halign: 'left' } },
+      t.unit,
+      t.unitPriceExclTax,
+      t.totalPriceExclTax,
+      t.vat
     ]],
     body: tableData,
     theme: 'grid',
@@ -872,11 +877,11 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
 
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('Total HT', totalsBoxX + 5, yPos + 7);
+  pdf.text(t.totalExclTax, totalsBoxX + 5, yPos + 7);
   pdf.text(`${formatCurrency(subtotal)} €`, totalsBoxX + totalsBoxWidth - 5, yPos + 7, { align: 'right' });
 
   pdf.setFont('helvetica', 'normal');
-  pdf.text('Total TVA', totalsBoxX + 5, yPos + 14);
+  pdf.text(t.totalVat, totalsBoxX + 5, yPos + 14);
   pdf.text(`${formatCurrency(totalVAT)} €`, totalsBoxX + totalsBoxWidth - 5, yPos + 14, { align: 'right' });
 
   pdf.setDrawColor(100, 130, 200);
@@ -887,7 +892,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   pdf.setFontSize(11);
   pdf.setFillColor(100, 130, 200);
   pdf.setTextColor(100, 130, 200);
-  pdf.text('Total TTC', totalsBoxX + 5, yPos + 27);
+  pdf.text(t.totalInclTax, totalsBoxX + 5, yPos + 27);
   pdf.text(`${formatCurrency(totalTTC)} €`, totalsBoxX + totalsBoxWidth - 5, yPos + 27, { align: 'right' });
   pdf.setTextColor(0, 0, 0);
 
@@ -900,8 +905,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
 
   pdf.setFontSize(7);
   pdf.setFont('helvetica', 'italic');
-  pdf.text('GREDECO a reçu l\'agrément en ce qui concerne le crédit d\'impôt en faveur de la recherche de 2022 à 2026',
-    margin, yPos);
+  pdf.text(t.taxCreditText, margin, yPos);
 
   yPos += 15;
 
@@ -923,17 +927,17 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   pdf.rect(leftSignatureX, yPos, signatureBoxWidth, signatureAreaHeight, 'S');
 
   pdf.setTextColor(0, 0, 0);
-  pdf.text('Bon pour accord', leftSignatureX + 3, yPos + 6);
+  pdf.text(t.agreementForApproval, leftSignatureX + 3, yPos + 6);
 
   pdf.rect(rightSignatureX, yPos, signatureBoxWidth, signatureAreaHeight, 'S');
-  pdf.text('Bon pour accord', rightSignatureX + 3, yPos + 6);
+  pdf.text(t.agreementForApproval, rightSignatureX + 3, yPos + 6);
 
   yPos += 10;
 
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(9);
-  pdf.text('Signature Investigateur', leftSignatureX + 3, yPos);
-  pdf.text('Signature promoteur', rightSignatureX + 3, yPos);
+  pdf.text(t.investigatorSignature, leftSignatureX + 3, yPos);
+  pdf.text(t.promoterSignature, rightSignatureX + 3, yPos);
 
   yPos += 4;
 
@@ -963,17 +967,17 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   pdf.rect(rightSignatureX, yPos, 85, 40, 'F');
 
   pdf.setFont('helvetica', 'bold');
-  pdf.text('Informations bancaires', margin + 2, yPos + 5);
+  pdf.text(t.bankingInformation, margin + 2, yPos + 5);
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(7);
-  pdf.text('Compte Crédit Agricole de Normandie-Seine', margin + 2, yPos + 10);
+  pdf.text(t.bankAccount, margin + 2, yPos + 10);
   pdf.text('N° IBAN: FR76 1830 6002 3236 1380 7752 124', margin + 2, yPos + 15);
   pdf.text('BIC: AGRIFRPP883', margin + 2, yPos + 20);
   pdf.text('SIRET 392 221 230 00023', margin + 2, yPos + 25);
 
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(8);
-  pdf.text('Contact', rightSignatureX + 2, yPos + 5);
+  pdf.text(t.contact, rightSignatureX + 2, yPos + 5);
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(7);
   pdf.text('Dr Sylvie BOISNIC', rightSignatureX + 2, yPos + 10);
@@ -990,22 +994,11 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   pdf.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F');
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('CONDITIONS GÉNÉRALES DE VENTE', margin + 3, yPos + 5);
+  pdf.text(t.termsAndConditionsTitle, margin + 3, yPos + 5);
 
   yPos += 15;
 
-  const cgv = [
-    { title: 'Article 1 - Objet', text: 'Les présentes conditions générales de vente s\'appliquent à toutes les prestations de services effectuées par GREDECO. Toute commande implique l\'acceptation sans réserve par l\'acheteur et son adhésion pleine et entière aux présentes conditions générales de vente qui prévalent sur tout autre document de l\'acheteur.' },
-    { title: 'Article 2 - Prix', text: 'Les prix des prestations sont ceux en vigueur au jour de la prise de commande. Ils sont libellés en euros et calculés hors taxes. Par voie de conséquence, ils seront majorés du taux de TVA et des frais de transport applicables au jour de la commande. GREDECO s\'accorde le droit de modifier ses tarifs à tout moment. Toutefois, elle s\'engage à facturer les marchandises commandées aux prix indiqués lors de l\'enregistrement de la commande.' },
-    { title: 'Article 3 - Escompte', text: 'Aucun escompte ne sera consenti en cas de paiement anticipé.' },
-    { title: 'Article 4 - Modalités de paiement', text: 'Les modalités de règlement du montant total du devis s\'établiront comme suit :\n\nAcompte : Un acompte de 50% du montant total du devis sera exigible à la signature du devis, paiement sous quinzaine.\n\nSolde : Le solde restant, soit 50% du montant total, sera réglé à 30 jours à compter de la date d\'émission du rapport d\'étude final.\n\nMoyens de Paiement : Les règlements peuvent être effectués :\n* Soit par chèque\n* Soit par virement bancaire' },
-    { title: 'Article 5 - Retard de paiement', text: 'En cas de défaut de paiement total ou partiel des marchandises livrées au jour de la réception, l\'acheteur doit verser à la société GREDECO une pénalité de retard égale à trois fois le taux de l\'intérêt légal. Le taux de l\'intérêt légal retenu est celui en vigueur au jour de la livraison des marchandises. Cette pénalité est calculée sur le montant TTC de la somme restant due, et court à compter de la date d\'échéance du prix sans qu\'aucune mise en demeure préalable ne soit nécessaire.' },
-    { title: 'Article 6 - Clause résolutoire', text: 'Si dans les quinze jours qui suivent la mise en œuvre de la clause « Retard de paiement », l\'acheteur ne s\'est pas acquitté des sommes restant dues, la vente sera résolue de plein droit et pourra ouvrir droit à l\'allocation de dommages et intérêts au profit de la société GREDECO.' },
-    { title: 'Article 7 - Clause de réserve de propriété', text: 'La société GREDECO conserve la propriété des biens vendus jusqu\'au paiement intégral du prix, en principal et accessoires. À ce titre, si l\'acheteur fait l\'objet d\'un redressement ou d\'une liquidation judiciaire, la société GREDECO se réserve le droit de revendiquer, dans le cadre de la procédure collective, les marchandises vendues et restées impayées.' },
-    { title: 'Article 8 - Clause de compétence territoriale', text: 'Tout litige relatif à l\'interprétation et à l\'exécution des présentes conditions générales de vente est soumis au droit français. À défaut de résolution amiable, le litige sera porté devant le Tribunal de Commerce de Paris.' },
-    { title: 'Article 9 - Force majeure', text: 'La responsabilité de GREDECO ne pourra pas être mise en œuvre si la non-exécution ou le retard dans l\'exécution de l\'une de ses obligations découle d\'un cas de force majeure. À ce titre, la force majeure s\'entend de tout événement extérieur, imprévisible et irrésistible au sens de l\'article 1148 du Code civil.' },
-    { title: 'Article 10 - Acceptation du client', text: 'Les présentes conditions générales de vente constituent le socle de la négociation commerciale et sont systématiquement adressées ou remises à chaque acheteur pour lui permettre de passer commande. Toute commande passée constitue une acceptation sans réserve par l\'acheteur des présentes conditions générales de vente.' }
-  ];
+  const cgv = t.termsAndConditions;
 
   pdf.setFontSize(8);
   cgv.forEach((article) => {

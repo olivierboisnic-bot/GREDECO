@@ -33,6 +33,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     quotationNumber: '',
     productDescription: '',
   });
+  const [pdfLanguage, setPdfLanguage] = useState<'fr' | 'en'>('fr');
   const [items, setItems] = useState<Omit<QuotationItem, 'id' | 'quotation_id' | 'created_at'>[]>([]);
   const [itemTimepoints, setItemTimepoints] = useState<{ [key: number]: string[] }>({});
   const [itemInstanceIds, setItemInstanceIds] = useState<Map<number, string>>(new Map());
@@ -297,6 +298,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       quotationNumber: quotation.quotation_number || '',
       productDescription: quotation.product_description || '',
     });
+
+    setPdfLanguage(quotation.language || 'fr');
 
     // Store the original quotation number for validation later
     setOriginalQuotationNumber(quotation.quotation_number || '');
@@ -2215,6 +2218,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       timepoints: `T0, T${studyDesign?.numberOfTimepoints || 0}`,
       vat_rate: vatRate,
       global_discount_percent: globalDiscountPercent,
+      language: pdfLanguage,
     };
 
     console.log('Quotation payload:', quotationPayload);
@@ -2362,6 +2366,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
   const resetForm = () => {
     setCustomerInfo({ name: '', contact: '', emails: [], phone: '', address: '', postal_code: '', city: '', country: 'France' });
     setQuotationInfo({ studyTitle: '', quotationNumber: '', productDescription: '' });
+    setPdfLanguage('fr');
     setItems([]);
     setNotes('');
     setStudyDesign(null);
@@ -2518,6 +2523,19 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="ex: Hydratation et taches brunes"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Langue du PDF
+              </label>
+              <select
+                value={pdfLanguage}
+                onChange={(e) => setPdfLanguage(e.target.value as 'fr' | 'en')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="fr">🇫🇷 Français</option>
+                <option value="en">🇬🇧 English</option>
+              </select>
             </div>
           </div>
           <div>
