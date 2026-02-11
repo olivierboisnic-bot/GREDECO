@@ -96,15 +96,10 @@ export default function QuotationList({ onEditQuotation }: QuotationListProps) {
   };
 
   const handleView = async (quotation: Quotation) => {
-    console.log('QuotationList - handleView - Selected quotation:', {
-      id: quotation.id,
-      quotation_number: quotation.quotation_number,
-      study_objectives: quotation.study_objectives,
-      product_description: quotation.product_description,
-      inclusion_criteria: quotation.inclusion_criteria,
-      exclusion_criteria: quotation.exclusion_criteria,
-      skin_types: quotation.skin_types
-    });
+    console.log('=== QUOTATION LIST - HANDLE VIEW ===');
+    console.log('Full quotation object:', quotation);
+    console.log('Language field value:', quotation.language);
+    console.log('Language field type:', typeof quotation.language);
     setSelectedQuotation(quotation);
     await loadQuotationItems(quotation.id);
     setShowPreview(true);

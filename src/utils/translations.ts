@@ -180,5 +180,11 @@ export const translations: Record<Language, Translations> = {
 };
 
 export const getTranslations = (language: Language): Translations => {
-  return translations[language] || translations.fr;
+  console.log('getTranslations called with language:', language);
+  console.log('Available languages:', Object.keys(translations));
+  console.log('Language exists in translations?', language in translations);
+  const result = translations[language] || translations.fr;
+  console.log('Returning translations for:', language in translations ? language : 'fr (default)');
+  console.log('Sample translation - date:', result.date);
+  return result;
 };
