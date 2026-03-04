@@ -86,25 +86,72 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
 
     // Extraire le nom du client, société et adresse
     // Format du PDF: "Client: Nadège DURAND FILORGA 2-4 Rue de Lisbonne 75008 , Paris, France STUDY DESIGN"
-    // Tout est sur une ligne, séparé par des espaces
 
-    const clientMatch = text.match(/Client:\s*([A-Za-zÀ-ÿ]+\s+[A-Z][A-Za-zÀ-ÿ]+)\s+([A-Z][A-Z\s]+?)\s+(\d+-?\d*\s+[Rr]ue[^S]+?)(?:\s+STUDY DESIGN|\s+DESIGN DE L'ÉTUDE)/i);
+    // Extraire tout le texte après "Client:" jusqu'à "STUDY DESIGN"
+    const clientSectionMatch = text.match(/Client:\s*(.+?)(?:\s+STUDY DESIGN|\s+DESIGN DE L'ÉTUDE)/is);
 
-    if (clientMatch) {
-      parsed.customer_name = clientMatch[1].trim();
-      parsed.customer_company = clientMatch[2].trim();
+    if (clientSectionMatch) {
+      const clientText = clientSectionMatch[1].trim();
 
-      // Nettoyer l'adresse: retirer ", France" et espaces multiples
-      let address = clientMatch[3].trim();
-      address = address.replace(/\s*,?\s*France\s*$/i, '').trim();
-      address = address.replace(/\s{2,}/g, ' '); // Remplacer espaces multiples par un seul
+      // Pattern flexible: Prénom NOM SOCIÉTÉ Adresse
+      // Prénom NOM (mots avec majuscule initiale) + SOCIÉTÉ (tout en majuscules) + Adresse (commence par chiffre)
+      const flexibleMatch = clientText.match(/^([A-Za-zÀ-ÿ'-]+(?:\s+[A-Za-zÀ-ÿ'-]+)+?)\s+([A-Z]{2,}[A-Z\s]*?)\s+([\d-]+\s+.+?)(?:\s*,?\s*France\s*)?$/is);
 
-      // Limiter la longueur de l'adresse
-      if (address.length > 200) {
-        address = address.substring(0, 197) + '...';
+      if (flexibleMatch) {
+        // Pattern avec société identifiée
+        parsed.customer_name = flexibleMatch[1].trim();
+        parsed.customer_company = flexibleMatch[2].trim();
+
+        let address = flexibleMatch[3].trim();
+        address = address.replace(/\s*,?\s*France\s*$/i, '').trim();
+        address = address.replace(/\s{2,}/g, ' ');
+
+        if (address.length > 200) {
+          address = address.substring(0, 197) + '...';
+        }
+        parsed.customer_address = address;
+      } else {
+        // Fallback: essayer de séparer nom et adresse seulement
+        const simpleParts = clientText.split(/\s+(?=\d)/); // Séparer avant le premier chiffre
+
+        if (simpleParts.length >= 2) {
+          const namePart = simpleParts[0].trim();
+          const addressPart = simpleParts.slice(1).join(' ').trim();
+
+          // Essayer d'identifier le nom et la société dans namePart
+          const words = namePart.split(/\s+/);
+          const nameWords: string[] = [];
+          const companyWords: string[] = [];
+
+          for (const word of words) {
+            if (word === word.toUpperCase() && word.length > 2) {
+              // Probablement une société (tout en majuscules)
+              companyWords.push(word);
+            } else {
+              // Probablement un nom
+              nameWords.push(word);
+            }
+          }
+
+          if (nameWords.length > 0) {
+            parsed.customer_name = nameWords.join(' ');
+          }
+          if (companyWords.length > 0) {
+            parsed.customer_company = companyWords.join(' ');
+          }
+
+          let address = addressPart.replace(/\s*,?\s*France\s*$/i, '').trim();
+          address = address.replace(/\s{2,}/g, ' ');
+
+          if (address.length > 200) {
+            address = address.substring(0, 197) + '...';
+          }
+          parsed.customer_address = address;
+        } else {
+          // Dernier fallback: tout mettre dans customer_name
+          parsed.customer_name = clientText.substring(0, 100);
+        }
       }
-
-      parsed.customer_address = address;
     }
 
     // Extraire l'email (si présent)
