@@ -242,7 +242,7 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
         product_description: parsedData.product_description || '',
         skin_types: JSON.stringify(parsedData.skin_types || []),
         number_of_conditions: parsedData.number_of_conditions || 1,
-        study_type: parsedData.study_type || 'clinique',
+        study_type: parsedData.study_type === 'ex_vivo' ? 'ex_vivo' : 'in_vivo',
         status: 'draft',
         total_amount: 0,
         global_discount_percent: parsedData.global_discount_percent || 0,
