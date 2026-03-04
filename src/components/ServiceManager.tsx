@@ -176,26 +176,100 @@ export default function ServiceManager() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const confirmClear = confirm(
-      'WARNING: This will DELETE ALL existing data including:\n' +
-      '- All services and pricing\n' +
-      '- All quotations\n' +
-      '- All quotation items\n\n' +
-      'This action cannot be undone. Are you sure you want to continue?'
-    );
-
-    if (!confirmClear) {
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      return;
-    }
-
     setImporting(true);
 
     try {
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
+
+      // Check if this is a quotation export (has "Informations" and "Services" sheets)
+      const isQuotationExport = workbook.SheetNames.includes('Informations') && workbook.SheetNames.includes('Services');
+
+      if (isQuotationExport) {
+        // Import from quotation export - only add new services, don't clear existing
+        const servicesSheet = workbook.Sheets['Services'];
+        const jsonData = XLSX.utils.sheet_to_json(servicesSheet);
+
+        if (jsonData.length === 0) {
+          alert('No services found in the quotation file.');
+          return;
+        }
+
+        const importedServices: any[] = [];
+        let errorCount = 0;
+        let skippedCount = 0;
+
+        // Get existing service names to avoid duplicates
+        const existingServiceNames = new Set(services.map(s => s.name.toLowerCase().trim()));
+
+        for (const row of jsonData) {
+          const description = (row as any)['Description'] || '';
+          const quantity = parseFloat((row as any)['Quantité'] || '0');
+          const unitPrice = parseFloat((row as any)['Prix Unitaire HT'] || '0');
+          const tvaPercent = parseFloat((row as any)['TVA (%)'] || '20');
+
+          if (!description || isNaN(unitPrice) || unitPrice <= 0) {
+            errorCount++;
+            continue;
+          }
+
+          // Skip if service already exists
+          if (existingServiceNames.has(description.toLowerCase().trim())) {
+            skippedCount++;
+            continue;
+          }
+
+          importedServices.push({
+            name: description.trim(),
+            appareil: '',
+            langues: '',
+            base_price: unitPrice,
+            tva_rate: tvaPercent,
+            unit: 'unit',
+            category: 'general',
+            type: 'optional',
+            multiplier_type: 'none',
+            is_active: true,
+            updated_at: new Date().toISOString(),
+          });
+        }
+
+        if (importedServices.length === 0) {
+          alert(`No new services to import. ${skippedCount} services already exist.`);
+          return;
+        }
+
+        const { data: insertedData, error } = await supabase
+          .from('services')
+          .insert(importedServices)
+          .select();
+
+        if (error) {
+          console.error('Error importing services:', error);
+          alert(`Error importing services: ${error.message}`);
+        } else {
+          alert(`Successfully imported ${insertedData?.length || 0} new services.${skippedCount > 0 ? ` Skipped ${skippedCount} existing services.` : ''}${errorCount > 0 ? ` Skipped ${errorCount} invalid rows.` : ''}`);
+          loadServices();
+        }
+        return;
+      }
+
+      // Original bulk import from service template - clears all data
+      const confirmClear = confirm(
+        'WARNING: This will DELETE ALL existing data including:\n' +
+        '- All services and pricing\n' +
+        '- All quotations\n' +
+        '- All quotation items\n\n' +
+        'This action cannot be undone. Are you sure you want to continue?'
+      );
+
+      if (!confirmClear) {
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
