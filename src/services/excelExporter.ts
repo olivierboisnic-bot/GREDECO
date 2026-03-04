@@ -23,12 +23,16 @@ export function generateExcelFromQuotation({ quotation, items }: ExcelExportData
     ['Email', Array.isArray(quotation.customer_email) ? quotation.customer_email.join(', ') : quotation.customer_email || ''],
     ['Langue', quotation.language || 'fr'],
     [''],
-    ['Méthodologie', quotation.notes || ''],
+    ['Méthodologie', quotation.methodology || quotation.notes || ''],
     [''],
-    ['Nombre de Panélistes', quotation.number_of_panelists || ''],
+    ['Critères d\'Inclusion', quotation.inclusion_criteria || ''],
+    ['Critères d\'Exclusion', quotation.exclusion_criteria || ''],
+    [''],
+    ['Nombre de Panélistes', quotation.number_of_panelists || quotation.number_of_volunteers || ''],
     ['Type d\'étude', quotation.study_type || ''],
     ['Nombre de Conditions', quotation.number_of_conditions || ''],
-    ['Phototypes', Array.isArray(quotation.skin_types) ? quotation.skin_types.join(', ') : ''],
+    ['Phototypes', Array.isArray(quotation.skin_types) ? quotation.skin_types.join(', ') : quotation.skin_types || ''],
+    ['Points de Mesure', quotation.timepoints || ''],
     [''],
     ['Remise Globale (%)', quotation.global_discount_percent || 0],
     [''],
@@ -36,10 +40,17 @@ export function generateExcelFromQuotation({ quotation, items }: ExcelExportData
   ];
 
   // Add study objectives
-  if (quotation.study_objectives && Array.isArray(quotation.study_objectives)) {
-    quotation.study_objectives.forEach((obj: string, index: number) => {
-      quotationData.push([`Objectif ${index + 1}`, obj]);
-    });
+  if (quotation.study_objectives) {
+    if (typeof quotation.study_objectives === 'string') {
+      const objectivesArray = quotation.study_objectives.split(',').map(o => o.trim()).filter(o => o);
+      objectivesArray.forEach((obj: string, index: number) => {
+        quotationData.push([`Objectif ${index + 1}`, obj]);
+      });
+    } else if (Array.isArray(quotation.study_objectives)) {
+      quotation.study_objectives.forEach((obj: string, index: number) => {
+        quotationData.push([`Objectif ${index + 1}`, obj]);
+      });
+    }
   }
 
   const quotationSheet = XLSX.utils.aoa_to_sheet(quotationData);
@@ -64,31 +75,41 @@ export function generateExcelFromQuotation({ quotation, items }: ExcelExportData
   const itemsSheet = XLSX.utils.aoa_to_sheet(itemsData);
   XLSX.utils.book_append_sheet(workbook, itemsSheet, 'Services');
 
-  // Sheet 3: Objectives Details (if available)
-  if (quotation.objectives_data && typeof quotation.objectives_data === 'object') {
-    const objectivesData: any[][] = [
-      ['Objectif', 'Méthodologie', 'Panélistes', 'Critères Inclusion', 'Critères Exclusion', 'Phototypes', 'Temps de mesure']
-    ];
+  // Sheet 3: Objectives Details with timepoints (if available)
+  if (quotation.objectives_data) {
+    try {
+      const objectivesData: any[][] = [
+        ['Objectif', 'Points de Mesure']
+      ];
 
-    // Convert objectives_data to array format
-    const objData = quotation.objectives_data as Record<string, any>;
-    Object.entries(objData).forEach(([objName, data]) => {
-      if (data && typeof data === 'object') {
-        objectivesData.push([
-          objName,
-          data.methodology || '',
-          data.numberOfPanelists || '',
-          data.inclusionCriteria || '',
-          data.exclusionCriteria || '',
-          Array.isArray(data.skinTypes) ? data.skinTypes.join(', ') : '',
-          data.measurementTime || ''
-        ]);
+      let parsedObjectives: any[] = [];
+      if (typeof quotation.objectives_data === 'string') {
+        parsedObjectives = JSON.parse(quotation.objectives_data);
+      } else if (Array.isArray(quotation.objectives_data)) {
+        parsedObjectives = quotation.objectives_data;
+      } else if (typeof quotation.objectives_data === 'object') {
+        parsedObjectives = Object.entries(quotation.objectives_data).map(([name, data]: [string, any]) => ({
+          name,
+          timepoints: data?.timepoints || []
+        }));
       }
-    });
 
-    if (objectivesData.length > 1) {
-      const objectivesSheet = XLSX.utils.aoa_to_sheet(objectivesData);
-      XLSX.utils.book_append_sheet(workbook, objectivesSheet, 'Objectifs Détails');
+      parsedObjectives.forEach((obj: any) => {
+        if (obj && obj.name) {
+          const timepoints = Array.isArray(obj.timepoints) ? obj.timepoints.join(', ') : obj.timepoints || '';
+          objectivesData.push([
+            obj.name,
+            timepoints
+          ]);
+        }
+      });
+
+      if (objectivesData.length > 1) {
+        const objectivesSheet = XLSX.utils.aoa_to_sheet(objectivesData);
+        XLSX.utils.book_append_sheet(workbook, objectivesSheet, 'Objectifs Détails');
+      }
+    } catch (e) {
+      console.error('Error parsing objectives_data for Excel export:', e);
     }
   }
 
