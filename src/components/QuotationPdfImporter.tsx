@@ -85,62 +85,26 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
     }
 
     // Extraire le nom du client, société et adresse
-    // Format 1: "Nadège DURAND FILORGA 2-4 Rue de Lisbonne..."
-    // Format 2: Multiple lines with name, company, address
+    // Format du PDF: "Client: Nadège DURAND FILORGA 2-4 Rue de Lisbonne 75008 , Paris, France STUDY DESIGN"
+    // Tout est sur une ligne, séparé par des espaces
 
-    // Trouver la section Client (peut être avec ou sans retour à la ligne avant STUDY DESIGN)
-    const clientMatch = text.match(/Client:\s*(.+?)(?:\s*(?:STUDY DESIGN|DESIGN DE L'ÉTUDE))/is);
+    const clientMatch = text.match(/Client:\s*([A-Za-zÀ-ÿ]+\s+[A-Z][A-Za-zÀ-ÿ]+)\s+([A-Z][A-Z\s]+?)\s+(\d+-?\d*\s+[Rr]ue[^S]+?)(?:\s+STUDY DESIGN|\s+DESIGN DE L'ÉTUDE)/i);
+
     if (clientMatch) {
-      let clientText = clientMatch[1].trim();
+      parsed.customer_name = clientMatch[1].trim();
+      parsed.customer_company = clientMatch[2].trim();
 
-      // Nettoyer: retirer "France" en fin si isolé, limiter la longueur
-      clientText = clientText.replace(/\s*,?\s*France\s*$/i, '').trim();
-      if (clientText.length > 500) {
-        clientText = clientText.substring(0, 500);
+      // Nettoyer l'adresse: retirer ", France" et espaces multiples
+      let address = clientMatch[3].trim();
+      address = address.replace(/\s*,?\s*France\s*$/i, '').trim();
+      address = address.replace(/\s{2,}/g, ' '); // Remplacer espaces multiples par un seul
+
+      // Limiter la longueur de l'adresse
+      if (address.length > 200) {
+        address = address.substring(0, 197) + '...';
       }
 
-      // Pattern 1: Tout sur une ligne "Prénom NOM SOCIÉTÉ Adresse"
-      const singleLineMatch = clientText.match(/^([A-Za-zÀ-ÿ]+\s+[A-Z][A-Za-zÀ-ÿ]+)\s+([A-Z]{2,}[A-Z\s]*?)\s+(\d+-?\d*\s+[Rr]ue[^,\n]+)/i);
-      if (singleLineMatch) {
-        parsed.customer_name = singleLineMatch[1].trim();
-        parsed.customer_company = singleLineMatch[2].trim();
-        parsed.customer_address = singleLineMatch[3].trim();
-      } else {
-        // Pattern 2: Plusieurs lignes
-        const lines = clientText.split(/\n+/).map(l => l.trim()).filter(l => l && l.length > 2);
-
-        if (lines.length > 0) {
-          // Première ligne = nom (ou nom + société si tout sur une ligne)
-          const firstLine = lines[0];
-
-          // Vérifier si la première ligne contient nom + société (tout en majuscules après le nom)
-          const nameSocietyMatch = firstLine.match(/^([A-Za-zÀ-ÿ]+\s+[A-Z][A-Za-zÀ-ÿ]+)\s+([A-Z]{2,}[A-Z\s]*?)$/i);
-          if (nameSocietyMatch) {
-            parsed.customer_name = nameSocietyMatch[1].trim();
-            parsed.customer_company = nameSocietyMatch[2].trim();
-          } else {
-            // Sinon, première ligne = nom uniquement
-            parsed.customer_name = firstLine.length > 100 ? firstLine.substring(0, 100) : firstLine;
-          }
-
-          // Deuxième ligne = société (si pas déjà trouvée et si ça ressemble à une société)
-          if (!parsed.customer_company && lines.length > 1) {
-            const secondLine = lines[1];
-            // Une société est généralement en majuscules et courte, pas une adresse
-            if (secondLine.length < 50 && !secondLine.match(/^\d/) && secondLine === secondLine.toUpperCase()) {
-              parsed.customer_company = secondLine;
-            }
-          }
-
-          // Chercher l'adresse (commence par un chiffre ou contient "rue")
-          for (const line of lines) {
-            if (line.match(/^\d+|rue/i)) {
-              parsed.customer_address = line.length > 200 ? line.substring(0, 197) + '...' : line;
-              break;
-            }
-          }
-        }
-      }
+      parsed.customer_address = address;
     }
 
     // Extraire l'email (si présent)
@@ -176,44 +140,67 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
       parsed.valid_until = date.toISOString().split('T')[0];
     }
 
-    // Extraire le titre de l'étude (Étude: ou Study:)
-    const studyTitleMatch = text.match(/(?:Étude|Study):\s*([^\n]+)/i);
+    // Extraire le titre de l'étude
+    // Format du PDF: section "Titre de l'étude" suivie du titre complet (peut être très long)
+    const studyTitleMatch = text.match(/Titre de l'étude\s+(.+?)(?:\s+Client:)/is);
     if (studyTitleMatch) {
-      const title = studyTitleMatch[1].trim();
-      // Ne pas prendre juste "ÉTUDE" ou "Study:" vide
-      if (title.length > 10 && !title.match(/^[A-Z]+$/)) {
+      let title = studyTitleMatch[1].trim();
+
+      // Nettoyer: retirer les retours à la ligne multiples
+      title = title.replace(/\s+/g, ' ');
+
+      // Limiter à 500 caractères pour le champ description
+      if (title.length > 500) {
+        title = title.substring(0, 497) + '...';
+      }
+
+      // Ne pas prendre si vide ou trop court
+      if (title.length > 10) {
         parsed.product_description = title;
       }
     }
 
     // Extraire les objectifs d'étude
+    // Format du PDF: liste à puces après "Objectifs d'étude"
     let objectives: string[] = [];
 
-    // Pattern 1: "Study Objectives:" en anglais (format direct)
-    const objEnglishMatch = text.match(/Study Objectives:\s*([^\n]+(?:,\s*[^\n]+)*)/i);
-    if (objEnglishMatch) {
-      objectives = objEnglishMatch[1]
-        .split(/,(?=\s*(?:Clinical|Instrumental|Preliminary))/i)
-        .map(obj => obj.trim())
-        .filter(obj => obj && obj.length > 10);
-    }
+    // Trouver la section entre "Objectifs d'étude" et "Méthodologie"
+    const objectivesSection = text.match(/Objectifs d'étude(.+?)(?:Méthodologie|Measurement Time)/is);
+    if (objectivesSection) {
+      const objText = objectivesSection[1];
 
-    // Pattern 2: "Objectifs de l'Étude: [...array...]" en français
-    if (objectives.length === 0) {
-      const objArrayMatch = text.match(/Objectifs de l'Étude:\s*\["([^"]+)"(?:,"([^"]+)")*(?:,"([^"]+)"\s*Méthodologie)?/i);
-      if (objArrayMatch) {
-        objectives = objArrayMatch[1]
-          .split('","')
-          .map(obj => obj.replace(/^["'\s]+|["'\s]+$/g, '').trim())
-          .filter(obj => obj && obj.length > 10 && !obj.includes('Méthodologie'));
+      // Chercher les lignes qui commencent par des patterns typiques d'objectifs
+      // Ex: "• Clinical scoring", "Clinical scoring :", "Instrumental :", etc.
+      const objLines = objText.split(/\n/).map(l => l.trim()).filter(l => l.length > 15);
+
+      for (const line of objLines) {
+        // Nettoyer la ligne: retirer les puces, les deux-points, etc.
+        let cleanLine = line.replace(/^[•●◦▪▫-]\s*/, '').trim();
+        cleanLine = cleanLine.replace(/:\s*$/, '').trim();
+
+        // Vérifier si c'est un objectif valide (commence par une majuscule, assez long)
+        if (cleanLine.length > 15 && cleanLine.match(/^[A-Z]/) && !cleanLine.includes('Méthodologie')) {
+          objectives.push(cleanLine);
+        }
       }
     }
 
-    // Pattern 3: Format multiligne simple
+    // Fallback: essayer de trouver des lignes qui ressemblent à des objectifs
     if (objectives.length === 0) {
-      const objMultilineMatch = text.match(/(?:Objectifs de l'Étude|Study Objectives):\s*([^\n]+)/i);
-      if (objMultilineMatch) {
-        objectives = [objMultilineMatch[1].trim()];
+      const patterns = [
+        /Clinical scoring[:\s]*([^\n]+)/i,
+        /Instrumental[:\s]*([^\n]+)/i,
+        /Preliminary Report[:\s]*([^\n]+)/i,
+      ];
+
+      for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+          const objective = match[0].replace(/:\s*$/, '').trim();
+          if (objective.length > 15) {
+            objectives.push(objective);
+          }
+        }
       }
     }
 
@@ -233,16 +220,24 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
       parsed.skin_types = phototypes;
     }
 
-    // Extraire la méthodologie (en français ou anglais) - Limiter la taille
-    const methodologyMatch = text.match(/(?:Méthodologie|Methodology):\s*([^\n]+)/i);
+    // Extraire la méthodologie (en français ou anglais)
+    // Format du PDF: "Méthodologie / Notes" suivi du texte complet (sans limites de lignes)
+    const methodologyMatch = text.match(/(?:Méthodologie \/ Notes|Méthodologie|Methodology):\s*(.+?)(?=\nLangue|\nLanguage|$)/is);
     if (methodologyMatch) {
       let methodology = methodologyMatch[1].trim();
-      // Limiter à 500 caractères max pour éviter les extractions trop longues
-      if (methodology.length > 500) {
-        methodology = methodology.substring(0, 497) + '...';
+
+      // Nettoyer: retirer les caractères spéciaux en début/fin
+      methodology = methodology.replace(/^[:\s]+|[:\s]+$/g, '');
+
+      // Limiter à 1000 caractères max (mais garder suffisamment d'info)
+      if (methodology.length > 1000) {
+        methodology = methodology.substring(0, 997) + '...';
       }
+
       // Ne pas inclure si ça ressemble à des conditions générales
-      if (!methodology.toLowerCase().includes('article') && !methodology.toLowerCase().includes('clause')) {
+      if (!methodology.toLowerCase().includes('article 1 -') &&
+          !methodology.toLowerCase().includes('general terms') &&
+          methodology.length > 30) {
         parsed.notes = methodology;
       }
     }
