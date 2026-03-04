@@ -87,33 +87,55 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
     // Extraire le nom du client, société et adresse
     // Format 1: "Nadège DURAND FILORGA 2-4 Rue de Lisbonne..."
     // Format 2: Multiple lines with name, company, address
-    let clientSection = text.match(/Client:\s*([^\n]+(?:\n[^\n]+){0,3}?)(?=\nSTUDY DESIGN|DESIGN DE L'ÉTUDE)/i);
-    if (clientSection) {
-      const clientText = clientSection[1];
-      const clientLines = clientText.split('\n').map(l => l.trim()).filter(l => l && !l.toLowerCase().includes('france') && l.length < 200);
 
-      // Première ligne contient généralement le nom et potentiellement la société
-      if (clientLines[0]) {
-        // Chercher le pattern "Prénom NOM SOCIÉTÉ Adresse..."
-        const nameCompanyMatch = clientLines[0].match(/^([A-Za-zÀ-ÿ]+\s+[A-Z][A-Za-zÀ-ÿ]+)\s+([A-Z][A-Z\s]+?)\s+(\d+-?\d*\s+[Rr]ue)/i);
-        if (nameCompanyMatch) {
-          parsed.customer_name = nameCompanyMatch[1].trim();
-          parsed.customer_company = nameCompanyMatch[2].trim();
-          // Extraire seulement l'adresse (limiter à 200 caractères)
-          const address = clientLines[0].substring(nameCompanyMatch.index! + nameCompanyMatch[1].length + nameCompanyMatch[2].length).trim();
-          parsed.customer_address = address.length > 200 ? address.substring(0, 197) + '...' : address;
-        } else {
-          // Sinon, première ligne = nom
-          parsed.customer_name = clientLines[0].length > 100 ? clientLines[0].substring(0, 100) : clientLines[0];
-          // Deuxième ligne = société (seulement si courte et pas une adresse)
-          if (clientLines[1] && !clientLines[1].match(/^\d/) && clientLines[1].length < 50 && !clientLines[1].toLowerCase().includes('study')) {
-            parsed.customer_company = clientLines[1];
+    // Trouver la section Client (peut être avec ou sans retour à la ligne avant STUDY DESIGN)
+    const clientMatch = text.match(/Client:\s*(.+?)(?:\s*(?:STUDY DESIGN|DESIGN DE L'ÉTUDE))/is);
+    if (clientMatch) {
+      let clientText = clientMatch[1].trim();
+
+      // Nettoyer: retirer "France" en fin si isolé, limiter la longueur
+      clientText = clientText.replace(/\s*,?\s*France\s*$/i, '').trim();
+      if (clientText.length > 500) {
+        clientText = clientText.substring(0, 500);
+      }
+
+      // Pattern 1: Tout sur une ligne "Prénom NOM SOCIÉTÉ Adresse"
+      const singleLineMatch = clientText.match(/^([A-Za-zÀ-ÿ]+\s+[A-Z][A-Za-zÀ-ÿ]+)\s+([A-Z]{2,}[A-Z\s]*?)\s+(\d+-?\d*\s+[Rr]ue[^,\n]+)/i);
+      if (singleLineMatch) {
+        parsed.customer_name = singleLineMatch[1].trim();
+        parsed.customer_company = singleLineMatch[2].trim();
+        parsed.customer_address = singleLineMatch[3].trim();
+      } else {
+        // Pattern 2: Plusieurs lignes
+        const lines = clientText.split(/\n+/).map(l => l.trim()).filter(l => l && l.length > 2);
+
+        if (lines.length > 0) {
+          // Première ligne = nom (ou nom + société si tout sur une ligne)
+          const firstLine = lines[0];
+
+          // Vérifier si la première ligne contient nom + société (tout en majuscules après le nom)
+          const nameSocietyMatch = firstLine.match(/^([A-Za-zÀ-ÿ]+\s+[A-Z][A-Za-zÀ-ÿ]+)\s+([A-Z]{2,}[A-Z\s]*?)$/i);
+          if (nameSocietyMatch) {
+            parsed.customer_name = nameSocietyMatch[1].trim();
+            parsed.customer_company = nameSocietyMatch[2].trim();
+          } else {
+            // Sinon, première ligne = nom uniquement
+            parsed.customer_name = firstLine.length > 100 ? firstLine.substring(0, 100) : firstLine;
           }
-          // Chercher l'adresse dans les lignes suivantes (max 2-3 lignes)
-          for (let i = 0; i < Math.min(clientLines.length, 3); i++) {
-            if (clientLines[i].match(/^\d+-?\d*\s+[Rr]ue/i)) {
-              const address = clientLines[i];
-              parsed.customer_address = address.length > 200 ? address.substring(0, 197) + '...' : address;
+
+          // Deuxième ligne = société (si pas déjà trouvée et si ça ressemble à une société)
+          if (!parsed.customer_company && lines.length > 1) {
+            const secondLine = lines[1];
+            // Une société est généralement en majuscules et courte, pas une adresse
+            if (secondLine.length < 50 && !secondLine.match(/^\d/) && secondLine === secondLine.toUpperCase()) {
+              parsed.customer_company = secondLine;
+            }
+          }
+
+          // Chercher l'adresse (commence par un chiffre ou contient "rue")
+          for (const line of lines) {
+            if (line.match(/^\d+|rue/i)) {
+              parsed.customer_address = line.length > 200 ? line.substring(0, 197) + '...' : line;
               break;
             }
           }
