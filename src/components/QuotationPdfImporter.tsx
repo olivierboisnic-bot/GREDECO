@@ -229,34 +229,50 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
       // Créer un nouveau numéro de devis si nécessaire
       const quotationNumber = parsedData.quotation_number || `IMPORT-${Date.now()}`;
 
+      // Préparer les données à insérer
+      const insertData = {
+        quotation_number: quotationNumber,
+        customer_name: parsedData.customer_name,
+        customer_email: parsedData.customer_email,
+        customer_company: parsedData.customer_company || '',
+        customer_address: parsedData.customer_address || '',
+        date: parsedData.date || new Date().toISOString().split('T')[0],
+        valid_until: parsedData.valid_until || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        study_objectives: parsedData.study_objectives || [],
+        product_description: parsedData.product_description || '',
+        skin_types: parsedData.skin_types || [],
+        number_of_panelists: parsedData.number_of_panelists || 0,
+        number_of_timepoints: parsedData.number_of_timepoints || 0,
+        number_of_conditions: parsedData.number_of_conditions || 1,
+        study_type: parsedData.study_type || 'clinique',
+        status: 'draft',
+        total_amount: 0,
+        global_discount_percent: parsedData.global_discount_percent || 0,
+        notes: parsedData.notes || '',
+        language: parsedData.language || 'fr',
+        methodology: '',
+        objectives_data: []
+      };
+
+      console.log('Attempting to insert quotation:', insertData);
+
       // Créer le devis
       const { data: quotation, error: quotationError } = await supabase
         .from('quotations')
-        .insert([{
-          quotation_number: quotationNumber,
-          customer_name: parsedData.customer_name,
-          customer_email: parsedData.customer_email,
-          customer_company: parsedData.customer_company || '',
-          customer_address: parsedData.customer_address || '',
-          date: parsedData.date || new Date().toISOString().split('T')[0],
-          valid_until: parsedData.valid_until || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          study_objectives: parsedData.study_objectives || [],
-          product_description: parsedData.product_description || '',
-          skin_types: parsedData.skin_types || [],
-          number_of_panelists: parsedData.number_of_panelists || 0,
-          number_of_timepoints: parsedData.number_of_timepoints || 0,
-          number_of_conditions: parsedData.number_of_conditions || 1,
-          study_type: parsedData.study_type || 'clinique',
-          status: 'draft',
-          total_amount: 0,
-          global_discount_percent: parsedData.global_discount_percent || 0,
-          notes: parsedData.notes || '',
-          language: parsedData.language || 'fr',
-        }])
+        .insert([insertData])
         .select()
         .single();
 
-      if (quotationError) throw quotationError;
+      if (quotationError) {
+        console.error('Supabase error details:', quotationError);
+        throw new Error(quotationError.message || 'Erreur lors de la création du devis dans la base de données');
+      }
+
+      if (!quotation) {
+        throw new Error('Le devis a été créé mais aucune donnée n\'a été retournée');
+      }
+
+      console.log('Quotation created successfully:', quotation);
 
       setStatus('success');
       setMessage('Devis créé avec succès !');
@@ -267,8 +283,10 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
       }, 1500);
     } catch (error) {
       console.error('Error creating quotation:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      console.error('Full error details:', error);
       setStatus('error');
-      setMessage(`Erreur lors de la création: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+      setMessage(`Erreur lors de la création: ${errorMessage}`);
     }
   };
 
