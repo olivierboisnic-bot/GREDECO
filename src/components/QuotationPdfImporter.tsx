@@ -54,7 +54,10 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
     let fullText = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
+    // Lire uniquement les 2 premières pages (éviter les conditions générales)
+    const pagesToRead = Math.min(2, pdf.numPages);
+
+    for (let i = 1; i <= pagesToRead; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items
@@ -84,10 +87,10 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
     // Extraire le nom du client, société et adresse
     // Format 1: "Nadège DURAND FILORGA 2-4 Rue de Lisbonne..."
     // Format 2: Multiple lines with name, company, address
-    let clientSection = text.match(/Client:\s*([^\n]+(?:\n[^\n]+){0,4}?)(?=\nSTUDY DESIGN|DESIGN DE L'ÉTUDE)/i);
+    let clientSection = text.match(/Client:\s*([^\n]+(?:\n[^\n]+){0,3}?)(?=\nSTUDY DESIGN|DESIGN DE L'ÉTUDE)/i);
     if (clientSection) {
       const clientText = clientSection[1];
-      const clientLines = clientText.split('\n').map(l => l.trim()).filter(l => l);
+      const clientLines = clientText.split('\n').map(l => l.trim()).filter(l => l && !l.toLowerCase().includes('france') && l.length < 200);
 
       // Première ligne contient généralement le nom et potentiellement la société
       if (clientLines[0]) {
@@ -96,18 +99,21 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
         if (nameCompanyMatch) {
           parsed.customer_name = nameCompanyMatch[1].trim();
           parsed.customer_company = nameCompanyMatch[2].trim();
-          parsed.customer_address = clientLines[0].substring(nameCompanyMatch.index! + nameCompanyMatch[1].length + nameCompanyMatch[2].length).trim();
+          // Extraire seulement l'adresse (limiter à 200 caractères)
+          const address = clientLines[0].substring(nameCompanyMatch.index! + nameCompanyMatch[1].length + nameCompanyMatch[2].length).trim();
+          parsed.customer_address = address.length > 200 ? address.substring(0, 197) + '...' : address;
         } else {
           // Sinon, première ligne = nom
-          parsed.customer_name = clientLines[0];
-          // Deuxième ligne = société
-          if (clientLines[1] && !clientLines[1].match(/^\d/) && clientLines[1].length < 50) {
+          parsed.customer_name = clientLines[0].length > 100 ? clientLines[0].substring(0, 100) : clientLines[0];
+          // Deuxième ligne = société (seulement si courte et pas une adresse)
+          if (clientLines[1] && !clientLines[1].match(/^\d/) && clientLines[1].length < 50 && !clientLines[1].toLowerCase().includes('study')) {
             parsed.customer_company = clientLines[1];
           }
-          // Chercher l'adresse dans les lignes suivantes
-          for (const line of clientLines) {
-            if (line.match(/^\d+-?\d*\s+[Rr]ue/i)) {
-              parsed.customer_address = line;
+          // Chercher l'adresse dans les lignes suivantes (max 2-3 lignes)
+          for (let i = 0; i < Math.min(clientLines.length, 3); i++) {
+            if (clientLines[i].match(/^\d+-?\d*\s+[Rr]ue/i)) {
+              const address = clientLines[i];
+              parsed.customer_address = address.length > 200 ? address.substring(0, 197) + '...' : address;
               break;
             }
           }
@@ -205,10 +211,18 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
       parsed.skin_types = phototypes;
     }
 
-    // Extraire la méthodologie (en français ou anglais)
-    const methodologyMatch = text.match(/(?:Méthodologie|Methodology):\s*([^\n]+(?:\n(?!Number of|Nombre de|Inclusion|Exclusion)[^\n]+)*)/i);
+    // Extraire la méthodologie (en français ou anglais) - Limiter la taille
+    const methodologyMatch = text.match(/(?:Méthodologie|Methodology):\s*([^\n]+)/i);
     if (methodologyMatch) {
-      parsed.notes = methodologyMatch[1].trim();
+      let methodology = methodologyMatch[1].trim();
+      // Limiter à 500 caractères max pour éviter les extractions trop longues
+      if (methodology.length > 500) {
+        methodology = methodology.substring(0, 497) + '...';
+      }
+      // Ne pas inclure si ça ressemble à des conditions générales
+      if (!methodology.toLowerCase().includes('article') && !methodology.toLowerCase().includes('clause')) {
+        parsed.notes = methodology;
+      }
     }
 
     // Extraire le temps de mesure/durée (ex: T0, T7, T28, T56, T84)
@@ -218,11 +232,7 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
       parsed.number_of_timepoints = timepoints.length;
     }
 
-    // Extraire les critères d'inclusion (pour enrichir les notes)
-    const inclusionMatch = text.match(/(?:Critères d'Inclusion|Inclusion Criteria):\s*([^\n]+(?:\n(?!Exclusion|Types de Peau|Skin Types)[^\n]+)*)/i);
-    if (inclusionMatch && !parsed.notes) {
-      parsed.notes = 'Inclusion: ' + inclusionMatch[1].trim();
-    }
+    // Ne pas extraire les critères d'inclusion - trop long et pas nécessaire
 
     // Le type d'étude par défaut est in_vivo (sauf si ex_vivo est mentionné)
     parsed.study_type = text.toLowerCase().includes('ex vivo') || text.toLowerCase().includes('ex_vivo') ? 'ex_vivo' : 'in_vivo';
@@ -268,6 +278,13 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
 
       // Parser les données
       const parsed = parseQuotationFromText(text);
+
+      // Vérifier que les données minimales sont présentes
+      if (!parsed.customer_name || parsed.customer_name.length < 3) {
+        throw new Error('Impossible d\'extraire le nom du client du PDF');
+      }
+
+      console.log('Parsed data:', parsed);
       setParsedData(parsed);
 
       setStatus('success');
@@ -507,10 +524,11 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
               <div className="flex gap-3">
                 <button
                   onClick={createQuotationFromParsedData}
-                  disabled={importing || !parsedData.customer_name || !parsedData.customer_email}
-                  className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 font-medium shadow-md"
+                  disabled={importing || !parsedData.customer_name || !parsedData.customer_email || status === 'creating'}
+                  className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium shadow-md"
+                  title={!parsedData.customer_name || !parsedData.customer_email ? 'Données manquantes (nom ou email)' : 'Créer le devis avec les données extraites'}
                 >
-                  Créer le Devis
+                  {status === 'creating' ? 'Création...' : 'Créer le Devis'}
                 </button>
                 <button
                   onClick={onClose}
