@@ -524,10 +524,10 @@ export default function ServiceManager() {
           <button
             onClick={handleImportClick}
             disabled={importing}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 font-medium shadow-md"
+            className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 text-sm font-medium shadow-md"
           >
-            <Upload size={18} />
-            {importing ? 'Import en cours...' : 'Importer Excel'}
+            <Upload size={16} />
+            {importing ? 'Import...' : 'Excel'}
           </button>
           <button
             onClick={handleExportTemplate}
