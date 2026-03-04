@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, Download, Edit2, Trash2, Search, Upload } from 'lucide-react';
+import { Eye, Download, CreditCard as Edit2, Trash2, Search, Upload } from 'lucide-react';
 import { supabase, Quotation, QuotationItem } from '../lib/supabase';
 import QuotationPreview from './QuotationPreview';
 import QuotationPdfImporter from './QuotationPdfImporter';
