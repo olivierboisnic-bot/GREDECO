@@ -75,16 +75,35 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
       global_discount_percent: 0,
     };
 
-    // Extraire le numéro de devis
-    const quotationMatch = text.match(/(?:Devis|Quotation)\s*(?:N°|#|n°)?\s*([A-Z0-9-]+)/i);
+    // Extraire le numéro de devis (ex: IMPORT-1772598769081 ou 18.2.26)
+    const quotationMatch = text.match(/(?:N°?\s*Devis|Quotation)\s*:?\s*([A-Z0-9.-]+)/i);
     if (quotationMatch) {
-      parsed.quotation_number = quotationMatch[1];
+      parsed.quotation_number = quotationMatch[1].trim();
     }
 
-    // Extraire le nom du client
-    const clientMatch = text.match(/(?:Client|Customer)[:\s]+([^\n]+)/i);
+    // Extraire le nom du client et la société
+    // Format: "Nadège DURAND FILORGA 2-4 Rue de Lisbonne..."
+    const clientMatch = text.match(/Client:\s*([A-Za-zÀ-ÿ\s]+?)(?:\s+([A-Z][A-Z\s]+))?\s+(\d+-?\d*\s+[Rr]ue[^\n]*)/i);
     if (clientMatch) {
       parsed.customer_name = clientMatch[1].trim();
+      if (clientMatch[2]) {
+        parsed.customer_company = clientMatch[2].trim();
+      }
+      parsed.customer_address = clientMatch[3].trim();
+    } else {
+      // Fallback - chercher juste après "Client:"
+      const simpleClientMatch = text.match(/Client:\s*([^\n]+)/i);
+      if (simpleClientMatch) {
+        const clientLine = simpleClientMatch[1].trim();
+        // Séparer nom et société si possible
+        const parts = clientLine.split(/\s{2,}|\s+(?=[A-Z]{2,})/);
+        if (parts.length > 0) {
+          parsed.customer_name = parts[0].trim();
+          if (parts.length > 1) {
+            parsed.customer_company = parts[1].trim();
+          }
+        }
+      }
     }
 
     // Extraire l'email
@@ -93,69 +112,88 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
       parsed.customer_email = emailMatch[1];
     }
 
-    // Extraire la société
-    const companyMatch = text.match(/(?:Société|Company|Entreprise)[:\s]+([^\n]+)/i);
-    if (companyMatch) {
-      parsed.customer_company = companyMatch[1].trim();
+    // Extraire l'adresse si pas encore trouvée
+    if (!parsed.customer_address) {
+      const addressMatch = text.match(/(\d+-?\d*\s+[Rr]ue[^\n]+\d{5}[^\n]*)/i);
+      if (addressMatch) {
+        parsed.customer_address = addressMatch[1].trim();
+      }
     }
 
-    // Extraire la date
-    const dateMatch = text.match(/(?:Date|Le)[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
+    // Extraire la date (format DD/MM/YYYY)
+    const dateMatch = text.match(/Date:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
     if (dateMatch) {
-      const dateParts = dateMatch[1].split(/[\/\-]/);
-      if (dateParts.length === 3) {
-        const day = dateParts[0].padStart(2, '0');
-        const month = dateParts[1].padStart(2, '0');
-        const year = dateParts[2].length === 2 ? '20' + dateParts[2] : dateParts[2];
-        parsed.date = `${year}-${month}-${day}`;
+      const day = dateMatch[1].padStart(2, '0');
+      const month = dateMatch[2].padStart(2, '0');
+      const year = dateMatch[3];
+      parsed.date = `${year}-${month}-${day}`;
+    }
+
+    // Extraire la date de validité (30 jours par défaut)
+    if (parsed.date) {
+      const date = new Date(parsed.date);
+      date.setDate(date.getDate() + 30);
+      parsed.valid_until = date.toISOString().split('T')[0];
+    }
+
+    // Extraire le titre de l'étude (Étude:)
+    const studyTitleMatch = text.match(/Étude:\s*([^\n]+)/i);
+    if (studyTitleMatch) {
+      parsed.product_description = studyTitleMatch[1].trim();
+    }
+
+    // Extraire les objectifs d'étude - plusieurs patterns possibles
+    let objectivesText = '';
+
+    // Pattern 1: "Objectifs de l'Étude: [...array...]"
+    const objArrayMatch = text.match(/Objectifs de l'Étude:\s*\[([^\]]+)\]/i);
+    if (objArrayMatch) {
+      objectivesText = objArrayMatch[1];
+    } else {
+      // Pattern 2: "Objectifs de l'Étude: texte sur plusieurs lignes"
+      const objMultilineMatch = text.match(/Objectifs de l'Étude:\s*([^\n]+(?:\n(?!Méthodologie|Types de Peau|Critères)[^\n]+)*)/i);
+      if (objMultilineMatch) {
+        objectivesText = objMultilineMatch[1];
       }
     }
 
-    // Extraire la date de validité
-    const validityMatch = text.match(/(?:Valide jusqu'au|Valid until|Valable jusqu'au)[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
-    if (validityMatch) {
-      const dateParts = validityMatch[1].split(/[\/\-]/);
-      if (dateParts.length === 3) {
-        const day = dateParts[0].padStart(2, '0');
-        const month = dateParts[1].padStart(2, '0');
-        const year = dateParts[2].length === 2 ? '20' + dateParts[2] : dateParts[2];
-        parsed.valid_until = `${year}-${month}-${day}`;
-      }
+    if (objectivesText) {
+      const objectives = objectivesText
+        .split(/","|;|\n/)
+        .map(obj => obj.replace(/^["'\s]+|["'\s]+$/g, '').trim())
+        .filter(obj => obj && obj.length > 10 && !obj.includes('Méthodologie') && !obj.includes('Types de Peau'));
+      parsed.study_objectives = objectives.slice(0, 5);
     }
 
     // Extraire le nombre de panélistes
-    const panelistsMatch = text.match(/(?:Nombre de panélistes|Number of panelists|Panelists)[:\s]+(\d+)/i);
+    const panelistsMatch = text.match(/(?:Nombre de Panélistes|Number of Panelists):\s*(\d+)/i);
     if (panelistsMatch) {
       parsed.number_of_panelists = parseInt(panelistsMatch[1]);
     }
 
-    // Extraire le nombre de temps de mesure
-    const timepointsMatch = text.match(/(?:Nombre de temps|Number of timepoints|Timepoints)[:\s]+(\d+)/i);
+    // Extraire les phototypes (I, II, III, IV, V, VI)
+    const phototypesMatch = text.match(/Types de Peau \(Phototypes\):\s*([I, V]+)/i);
+    if (phototypesMatch) {
+      const phototypesStr = phototypesMatch[1];
+      const phototypes = phototypesStr.split(',').map(p => p.trim()).filter(p => p);
+      parsed.skin_types = phototypes;
+    }
+
+    // Extraire la méthodologie
+    const methodologyMatch = text.match(/Méthodologie:\s*([^\n]+(?:\n(?!Nombre de Panélistes|Critères)[^\n]+)*)/i);
+    if (methodologyMatch) {
+      parsed.notes = methodologyMatch[1].trim();
+    }
+
+    // Extraire le temps de mesure/durée (ex: T0, T7, T28, T56, T84)
+    const timepointsMatch = text.match(/Temps de mesure\/Durée:\s*([T0-9, ]+)/i);
     if (timepointsMatch) {
-      parsed.number_of_timepoints = parseInt(timepointsMatch[1]);
+      const timepoints = timepointsMatch[1].split(',').map(t => t.trim()).filter(t => t.startsWith('T'));
+      parsed.number_of_timepoints = timepoints.length;
     }
 
-    // Extraire le type d'étude
-    const studyTypeMatch = text.match(/(?:Type d'étude|Study type)[:\s]+(Clinique|Laboratoire|Clinical|Laboratory)/i);
-    if (studyTypeMatch) {
-      parsed.study_type = studyTypeMatch[1].toLowerCase().includes('clinic') || studyTypeMatch[1].toLowerCase().includes('clinique') ? 'clinique' : 'laboratoire';
-    }
-
-    // Extraire la description du produit
-    const productMatch = text.match(/(?:Produit testé|Product tested|Produit)[:\s]+([^\n]+)/i);
-    if (productMatch) {
-      parsed.product_description = productMatch[1].trim();
-    }
-
-    // Extraire les objectifs d'étude
-    const objectivesMatch = text.match(/(?:Objectifs d'étude|Study objectives)[:\s]+([^\n]+(?:\n[^\n]+)*?)(?=\n(?:Nombre|Phototypes|Services|$))/i);
-    if (objectivesMatch) {
-      const objectives = objectivesMatch[1]
-        .split(/[,;]|\n/)
-        .map(obj => obj.trim())
-        .filter(obj => obj && obj.length > 3);
-      parsed.study_objectives = objectives.slice(0, 5);
-    }
+    // Le type d'étude par défaut est in_vivo (sauf si ex_vivo est mentionné)
+    parsed.study_type = text.toLowerCase().includes('ex vivo') || text.toLowerCase().includes('ex_vivo') ? 'ex_vivo' : 'in_vivo';
 
     // Extraire la remise globale
     const discountMatch = text.match(/(?:Remise globale|Global discount)[:\s]+(\d+(?:\.\d+)?)\s*%/i);
@@ -164,9 +202,9 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
     }
 
     // Extraire la langue
-    if (text.includes('Devis') || text.includes('Client') || text.includes('Société')) {
+    if (text.includes('Devis') || text.includes('Étude') || text.includes('Méthodologie')) {
       parsed.language = 'fr';
-    } else if (text.includes('Quotation') || text.includes('Customer') || text.includes('Company')) {
+    } else if (text.includes('Quotation') || text.includes('Study') || text.includes('Methodology')) {
       parsed.language = 'en';
     } else {
       parsed.language = 'fr';
