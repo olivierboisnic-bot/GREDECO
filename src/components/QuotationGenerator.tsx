@@ -2468,6 +2468,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
           id: generateStableObjectiveId(objData.name),
           name: objData.name,
           timepoints: objData.timepoints,
+          serviceIds: [],
+          serviceInstances: [],
         }));
         setObjectives(importedObjectives);
       } else if (importedData.objectives.length > 0) {
@@ -2475,6 +2477,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
           id: generateStableObjectiveId(objName),
           name: objName,
           timepoints: ['T0'],
+          serviceIds: [],
+          serviceInstances: [],
         }));
         setObjectives(importedObjectives);
       }
