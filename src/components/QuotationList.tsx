@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Eye, Download, Edit2, Trash2, Search } from 'lucide-react';
+import { Eye, Download, Edit2, Trash2, Search, Upload } from 'lucide-react';
 import { supabase, Quotation, QuotationItem } from '../lib/supabase';
 import QuotationPreview from './QuotationPreview';
+import QuotationPdfImporter from './QuotationPdfImporter';
 import { formatCurrency } from '../utils/numberFormat';
 
 interface QuotationListProps {
@@ -15,6 +16,7 @@ export default function QuotationList({ onEditQuotation }: QuotationListProps) {
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [quotationItems, setQuotationItems] = useState<QuotationItem[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [showPdfImporter, setShowPdfImporter] = useState(false);
   const [calculatedTotals, setCalculatedTotals] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
@@ -159,7 +161,16 @@ export default function QuotationList({ onEditQuotation }: QuotationListProps) {
     <>
       <div className="bg-white rounded-lg shadow-sm print:hidden">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Historique des Devis</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Historique des Devis</h2>
+            <button
+              onClick={() => setShowPdfImporter(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md"
+            >
+              <Upload size={18} />
+              Importer PDF
+            </button>
+          </div>
 
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -294,6 +305,13 @@ export default function QuotationList({ onEditQuotation }: QuotationListProps) {
           quotation={selectedQuotation}
           items={quotationItems}
           onClose={() => setShowPreview(false)}
+        />
+      )}
+
+      {showPdfImporter && (
+        <QuotationPdfImporter
+          onImportComplete={loadQuotations}
+          onClose={() => setShowPdfImporter(false)}
         />
       )}
     </>
