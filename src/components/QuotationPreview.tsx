@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
-import { X, Download } from 'lucide-react';
+import { X, Download, FileSpreadsheet } from 'lucide-react';
 import { Quotation, QuotationItem } from '../lib/supabase';
 import GredecoLogo from './GredecoLogo';
 import { generateQuotationPDF } from '../services/pdfGenerator';
+import { downloadQuotationAsExcel } from '../services/excelExporter';
 import { formatCurrency } from '../utils/numberFormat';
 
 interface QuotationPreviewProps {
@@ -83,6 +84,16 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
       console.error('Error generating PDF:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       alert(`Erreur lors de la génération du PDF: ${errorMessage}`);
+    }
+  };
+
+  const handleDownloadExcel = () => {
+    try {
+      downloadQuotationAsExcel(quotation, items);
+    } catch (error) {
+      console.error('Error generating Excel:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      alert(`Erreur lors de la génération du fichier Excel: ${errorMessage}`);
     }
   };
 
@@ -189,6 +200,13 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
             >
               <Download size={18} />
               Télécharger PDF
+            </button>
+            <button
+              onClick={handleDownloadExcel}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <FileSpreadsheet size={18} />
+              Télécharger Excel
             </button>
             <button
               onClick={onClose}
