@@ -186,7 +186,7 @@ export default function ServiceManager() {
       const isQuotationExport = workbook.SheetNames.includes('Informations') && workbook.SheetNames.includes('Services');
 
       if (isQuotationExport) {
-        // Import from quotation export - only add new services, don't clear existing
+        // Import from quotation export with objective grouping
         const servicesSheet = workbook.Sheets['Services'];
         const jsonData = XLSX.utils.sheet_to_json(servicesSheet);
 
@@ -195,11 +195,17 @@ export default function ServiceManager() {
           return;
         }
 
-        const importedServices: any[] = [];
-        let errorCount = 0;
-        let skippedCount = 0;
+        console.log('Quotation import - first row:', jsonData[0]);
 
-        // Get existing service names to avoid duplicates
+        // Group services by objective
+        const servicesByObjective = new Map<string, Array<{
+          description: string;
+          quantity: number;
+          unitPrice: number;
+          tvaPercent: number;
+        }>>();
+
+        // Get existing service names to check for duplicates
         const existingServiceNames = new Set(services.map(s => s.name.toLowerCase().trim()));
 
         for (const row of jsonData) {
@@ -207,35 +213,64 @@ export default function ServiceManager() {
           const quantity = parseFloat((row as any)['Quantité'] || '0');
           const unitPrice = parseFloat((row as any)['Prix Unitaire HT'] || '0');
           const tvaPercent = parseFloat((row as any)['TVA (%)'] || '20');
+          const objective = (row as any)['Objectif'] || 'Ungrouped';
 
           if (!description || isNaN(unitPrice) || unitPrice <= 0) {
-            errorCount++;
             continue;
           }
 
-          // Skip if service already exists
-          if (existingServiceNames.has(description.toLowerCase().trim())) {
-            skippedCount++;
-            continue;
+          if (!servicesByObjective.has(objective)) {
+            servicesByObjective.set(objective, []);
           }
 
-          importedServices.push({
-            name: description.trim(),
-            appareil: '',
-            langues: '',
-            base_price: unitPrice,
-            tva_rate: tvaPercent,
-            unit: 'unit',
-            category: 'general',
-            type: 'optional',
-            multiplier_type: 'none',
-            is_active: true,
-            updated_at: new Date().toISOString(),
+          servicesByObjective.get(objective)!.push({
+            description: description.trim(),
+            quantity,
+            unitPrice,
+            tvaPercent
           });
         }
 
+        if (servicesByObjective.size === 0) {
+          alert('No valid services found in the quotation file.');
+          return;
+        }
+
+        const importedServices: any[] = [];
+        let skippedCount = 0;
+        const objectivesSummary: string[] = [];
+
+        for (const [objectiveName, serviceList] of servicesByObjective.entries()) {
+          objectivesSummary.push(`\n${objectiveName}: ${serviceList.length} service(s)`);
+
+          for (const serviceData of serviceList) {
+            // Skip if service already exists
+            if (existingServiceNames.has(serviceData.description.toLowerCase().trim())) {
+              skippedCount++;
+              continue;
+            }
+
+            // Store objective name in appareil field for reference
+            const appareilInfo = `Objective: ${objectiveName}`;
+
+            importedServices.push({
+              name: serviceData.description,
+              appareil: appareilInfo,
+              langues: '',
+              base_price: serviceData.unitPrice,
+              tva_rate: serviceData.tvaPercent,
+              unit: 'unit',
+              category: objectiveName,
+              type: 'optional',
+              multiplier_type: 'none',
+              is_active: true,
+              updated_at: new Date().toISOString(),
+            });
+          }
+        }
+
         if (importedServices.length === 0) {
-          alert(`No new services to import. ${skippedCount} services already exist.`);
+          alert(`No new services to import. All ${skippedCount} services already exist in the catalog.`);
           return;
         }
 
@@ -248,7 +283,8 @@ export default function ServiceManager() {
           console.error('Error importing services:', error);
           alert(`Error importing services: ${error.message}`);
         } else {
-          alert(`Successfully imported ${insertedData?.length || 0} new services.${skippedCount > 0 ? ` Skipped ${skippedCount} existing services.` : ''}${errorCount > 0 ? ` Skipped ${errorCount} invalid rows.` : ''}`);
+          const message = `Successfully imported ${insertedData?.length || 0} new service(s) from quotation.\n\nGrouped by objectives:${objectivesSummary.join('')}${skippedCount > 0 ? `\n\nSkipped ${skippedCount} service(s) that already exist.` : ''}`;
+          alert(message);
           loadServices();
         }
         return;
