@@ -3,8 +3,11 @@ import { Upload, X, AlertCircle, CheckCircle } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { supabase } from '../lib/supabase';
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Configure PDF.js worker - use local import instead of CDN
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 interface QuotationPdfImporterProps {
   onImportComplete: () => void;
