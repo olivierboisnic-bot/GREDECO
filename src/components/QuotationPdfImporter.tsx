@@ -316,6 +316,60 @@ export default function QuotationPdfImporter({ onImportComplete, onClose }: Quot
       parsed.language = 'fr';
     }
 
+    // Extraire les items du tableau
+    // Les items sont entre les objectifs et "SERVICES OBLIGATOIRES" ou la fin
+    const itemsSection = text.match(/OBJECTIVE\s*:(.+?)(?:SERVICES OBLIGATOIRES|CONDITIONS GÉNÉRALES|Bon pour accord|$)/is);
+    if (itemsSection) {
+      const itemsText = itemsSection[1];
+      const items: any[] = [];
+
+      // Pattern pour capturer les lignes du tableau
+      // Format: "Description... Unité Prix_U Prix_T TVA%"
+      // Ex: "Lower Face Sagging (Bazin Scale) Clinical grading... 150 15 € 2 250 € 20%"
+
+      // Découper par objectif (OBJECTIVE : ...)
+      const objectiveSections = itemsText.split(/(?=OBJECTIVE\s*:|OBJECTIF\s*:)/i);
+
+      for (const section of objectiveSections) {
+        if (section.trim().length < 20) continue;
+
+        // Extraire le nom de l'objectif
+        const objectiveNameMatch = section.match(/(?:OBJECTIVE|OBJECTIF)\s*:\s*([^\n]+?)(?:\s+Measurement|\s+Temps de mesure)/is);
+        const objectiveName = objectiveNameMatch ? objectiveNameMatch[1].trim() : '';
+
+        // Chercher les lignes qui ressemblent à des services
+        // Pattern: "Texte... Nombre Prix € Prix € Pourcentage%"
+        const serviceLines = section.match(/([^\n]+?)\s+(\d+)\s+(\d+(?:[.,]\d+)?)\s*€\s+(\d+(?:\s?\d+)*(?:[.,]\d+)?)\s*€\s+(\d+)\s*%/gi);
+
+        if (serviceLines) {
+          for (const line of serviceLines) {
+            const serviceMatch = line.match(/^(.+?)\s+(\d+)\s+(\d+(?:[.,]\d+)?)\s*€\s+(\d+(?:\s?\d+)*(?:[.,]\d+)?)\s*€\s+(\d+)\s*%/i);
+
+            if (serviceMatch) {
+              const description = serviceMatch[1].trim();
+              const quantity = parseInt(serviceMatch[2]);
+              const unitPrice = parseFloat(serviceMatch[3].replace(',', '.'));
+              const totalPrice = parseFloat(serviceMatch[4].replace(/\s/g, '').replace(',', '.'));
+              const tvaPercent = parseInt(serviceMatch[5]);
+
+              // Ne pas ajouter si la description est trop courte ou invalide
+              if (description.length > 10 && !description.includes('€') && quantity > 0) {
+                items.push({
+                  description: description,
+                  quantity: quantity,
+                  unit_price: unitPrice,
+                  tva_percent: tvaPercent,
+                  objective_name: objectiveName || undefined,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      parsed.items = items;
+    }
+
     return parsed;
   };
 
