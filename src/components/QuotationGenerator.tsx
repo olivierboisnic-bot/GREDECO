@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X, Upload } from 'lucide-react';
 import { supabase, Service, QuotationItem } from '../lib/supabase';
 import { StudyDesign } from '../services/aiQuotationService';
 import ObjectiveManager from './ObjectiveManager';
@@ -7,6 +7,7 @@ import { StudyObjective } from '../types/studyObjective';
 import { generateStableObjectiveId } from '../utils/objectiveId';
 import { useNotification } from '../hooks/useNotification';
 import { formatCurrency } from '../utils/numberFormat';
+import { importQuotationFromExcel } from '../services/excelImporter';
 
 interface QuotationGeneratorProps {
   onQuotationCreated?: () => void;
@@ -2402,6 +2403,93 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     setSelectedLanguages(newLanguages);
   };
 
+  const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const importedData = await importQuotationFromExcel(file);
+
+      setQuotationInfo({
+        quotationNumber: importedData.quotationInfo.quotationNumber,
+        studyTitle: importedData.quotationInfo.studyTitle,
+        productDescription: '',
+      });
+
+      setCustomerInfo({
+        name: importedData.customerInfo.name,
+        contact: importedData.customerInfo.contact || importedData.customerInfo.name,
+        emails: importedData.customerInfo.emails,
+        phone: '',
+        address: importedData.customerInfo.address,
+        postal_code: importedData.customerInfo.postalCode,
+        city: importedData.customerInfo.city,
+        country: importedData.customerInfo.country,
+      });
+
+      setCompanySearchTerm(importedData.customerInfo.company);
+
+      setPdfLanguage(importedData.quotationInfo.language);
+
+      setStudyDesign({
+        studyType: importedData.studyDesign.studyType as 'in_vivo' | 'in_vitro' | 'ex_vivo',
+        numberOfPanelists: importedData.studyDesign.numberOfPanelists,
+        numberOfTimepoints: 2,
+        studyDuration: '',
+        objectives: importedData.objectives,
+        inclusionCriteria: importedData.studyDesign.inclusionCriteria,
+        exclusionCriteria: importedData.studyDesign.exclusionCriteria,
+        skinTypes: importedData.studyDesign.skinTypes,
+        methodology: importedData.studyDesign.methodology,
+        expectedOutcomes: [],
+      });
+
+      setNumberOfConditions(importedData.studyDesign.numberOfConditions);
+      setNotes(importedData.studyDesign.methodology);
+      setGlobalDiscountPercent(importedData.globalDiscountPercent);
+
+      const importedItems = importedData.items.map((item, index) => {
+        const instanceId = `${item.description}-${Date.now()}-${index}`;
+        return {
+          service_id: '',
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          tva_percent: item.tvaPercent,
+          objective_name: item.objectiveName,
+          order_index: item.orderIndex,
+          image_url: null,
+        };
+      });
+      setItems(importedItems);
+
+      if (importedData.objectivesData.length > 0) {
+        const importedObjectives = importedData.objectivesData.map((objData) => ({
+          id: generateStableObjectiveId(objData.name),
+          name: objData.name,
+          timepoints: objData.timepoints,
+        }));
+        setObjectives(importedObjectives);
+      } else if (importedData.objectives.length > 0) {
+        const importedObjectives = importedData.objectives.map((objName) => ({
+          id: generateStableObjectiveId(objName),
+          name: objName,
+          timepoints: ['T0'],
+        }));
+        setObjectives(importedObjectives);
+      }
+
+      showNotification('Fichier Excel importé avec succès', 'success');
+      event.target.value = '';
+    } catch (error) {
+      showNotification(
+        error instanceof Error ? error.message : 'Erreur lors de l\'import du fichier Excel',
+        'error'
+      );
+      event.target.value = '';
+    }
+  };
+
   const filteredServices = services.filter(service => {
     if (selectedLanguages.size === 0) return true;
     const serviceLangues = (service.langues || '').toUpperCase();
@@ -2488,6 +2576,27 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
               Charger
             </button>
           </div>
+        </div>
+
+        <div className="mb-4 p-4 bg-gradient-to-br from-orange-50 to-yellow-50 border border-orange-300 rounded-lg shadow-md">
+          <label className="block text-sm font-medium text-gray-900 mb-2">
+            Importer depuis un Fichier Excel
+          </label>
+          <div className="flex items-center gap-2">
+            <label className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors cursor-pointer text-sm font-medium shadow-md inline-flex items-center justify-center gap-2">
+              <Upload className="w-4 h-4" />
+              Choisir un fichier Excel
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleImportExcel}
+                className="hidden"
+              />
+            </label>
+          </div>
+          <p className="mt-2 text-xs text-gray-600">
+            Importez un fichier Excel exporté précédemment pour remplir automatiquement tous les champs du devis.
+          </p>
         </div>
 
       </div>
