@@ -264,28 +264,62 @@ export default function ServiceManager() {
         let multiplierType = 'none';
         const multiplierLower = multiplicateurRaw.toString().toLowerCase();
 
-        const isFixedQuantity = multiplierLower.includes('fixe') || multiplierLower.includes('aucun');
-        const hasPanelists = multiplierLower.includes('panelist') || multiplierLower.includes('panéliste') || multiplierLower.includes('peau');
-        const hasTimepoints = multiplierLower.includes('timepoint') || multiplierLower.includes('temps');
-        const hasSkinAndCondition = multiplierLower.includes('skin_and_condition') ||
-          (multiplierLower.includes('peau') && multiplierLower.includes('condition') && multiplierLower.includes('excluant'));
+        // Détection des différents types de multiplicateurs
+        const isFixedQuantity = multiplierLower.includes('fixe') ||
+                                multiplierLower.includes('aucun') ||
+                                multiplierLower.includes('quantité fixe') ||
+                                multiplierLower === '';
 
+        const hasSkinAndCondition = multiplierLower.includes('peau et condition') &&
+                                   (multiplierLower.includes('excluant') || multiplierLower.includes('only'));
+
+        const hasBoth = multiplierLower.includes('panélistes/peau_condition × temps') ||
+                       multiplierLower.includes('panelistes/peau_condition × temps') ||
+                       (multiplierLower.includes('×') && multiplierLower.includes('peau') && multiplierLower.includes('temps')) ||
+                       (multiplierLower.includes('×') && multiplierLower.includes('panelist') && multiplierLower.includes('temps'));
+
+        const hasPanelistsOnly = (multiplierLower.includes('panelist') || multiplierLower.includes('panéliste') || multiplierLower.includes('nombre de panélistes')) &&
+                                !multiplierLower.includes('×') &&
+                                !multiplierLower.includes('temps') &&
+                                !multiplierLower.includes('condition');
+
+        const hasTimepointsOnly = (multiplierLower.includes('temps de mesure') || multiplierLower.includes('timepoint')) &&
+                                 !multiplierLower.includes('×') &&
+                                 !multiplierLower.includes('panelist') &&
+                                 !multiplierLower.includes('panéliste') &&
+                                 !multiplierLower.includes('peau');
+
+        // Priorité dans la détection
         if (isFixedQuantity) {
           multiplierType = 'none';
         } else if (hasSkinAndCondition) {
           multiplierType = 'skin_and_condition';
-        } else if (multiplierLower.includes('both') || multiplierLower.includes('×') || (hasPanelists && hasTimepoints)) {
+        } else if (hasBoth) {
           multiplierType = 'both';
-        } else if (hasPanelists) {
+        } else if (hasPanelistsOnly) {
           multiplierType = 'panelists';
-        } else if (hasTimepoints) {
+        } else if (hasTimepointsOnly) {
           multiplierType = 'timepoints';
         }
 
+        // Override basé sur le type de service (optionnel, peut être retiré si non pertinent)
         if (typeLower.includes('recurring') || typeLower.includes('récurrent')) {
           multiplierType = 'both';
         } else if (typeLower.includes('one_time') || typeLower.includes('ponctuel')) {
           multiplierType = 'panelists';
+        }
+
+        // Log pour débogage (première ligne seulement pour éviter de surcharger la console)
+        if (index === 0) {
+          console.log('Exemple de détection multiplicateur:');
+          console.log('  Texte original:', multiplicateurRaw);
+          console.log('  Texte en minuscules:', multiplierLower);
+          console.log('  Type détecté:', multiplierType);
+          console.log('  isFixedQuantity:', isFixedQuantity);
+          console.log('  hasSkinAndCondition:', hasSkinAndCondition);
+          console.log('  hasBoth:', hasBoth);
+          console.log('  hasPanelistsOnly:', hasPanelistsOnly);
+          console.log('  hasTimepointsOnly:', hasTimepointsOnly);
         }
 
         importedServices.push({
