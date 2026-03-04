@@ -2579,17 +2579,9 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
             >
               Charger
             </button>
-          </div>
-        </div>
-
-        <div className="mb-4 p-4 bg-gradient-to-br from-orange-50 to-yellow-50 border border-orange-300 rounded-lg shadow-md">
-          <label className="block text-sm font-medium text-gray-900 mb-2">
-            Importer depuis un Fichier Excel
-          </label>
-          <div className="flex items-center gap-2">
-            <label className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors cursor-pointer text-sm font-medium shadow-md inline-flex items-center justify-center gap-2">
+            <label className="shrink-0 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors cursor-pointer text-sm font-medium shadow-md inline-flex items-center justify-center gap-2 whitespace-nowrap" title="Importer depuis Excel">
               <Upload className="w-4 h-4" />
-              Choisir un fichier Excel
+              Excel
               <input
                 type="file"
                 accept=".xlsx,.xls"
@@ -2598,9 +2590,6 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
               />
             </label>
           </div>
-          <p className="mt-2 text-xs text-gray-600">
-            Importez un fichier Excel exporté précédemment pour remplir automatiquement tous les champs du devis.
-          </p>
         </div>
 
       </div>
