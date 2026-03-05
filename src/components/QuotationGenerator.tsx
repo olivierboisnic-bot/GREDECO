@@ -2512,10 +2512,17 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         // Link this item to its objective
         if (item.objectiveName) {
           const objective = importedObjectives.find(obj => obj.name === item.objectiveName);
+          console.log('Linking item to objective:', {
+            itemObjectiveName: item.objectiveName,
+            foundObjective: objective?.name,
+            serviceId,
+            currentServiceIds: objective?.serviceIds
+          });
           if (objective) {
             // Add to serviceIds if not already there
             if (!objective.serviceIds.includes(serviceId)) {
               objective.serviceIds.push(serviceId);
+              console.log('Added serviceId to objective:', serviceId, 'New serviceIds:', objective.serviceIds);
             }
 
             // Add to serviceInstances
@@ -2525,6 +2532,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
               serviceId: serviceId,
               customName: matchedService ? matchedService.name : item.description,
             });
+          } else {
+            console.error('❌ Objective not found for item:', item.objectiveName);
           }
         }
 
