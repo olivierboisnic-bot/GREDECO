@@ -2448,22 +2448,6 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       setNotes(importedData.studyDesign.methodology);
       setGlobalDiscountPercent(importedData.globalDiscountPercent);
 
-      const importedItems = importedData.items.map((item, index) => {
-        const instanceId = `${item.description}-${Date.now()}-${index}`;
-        return {
-          instanceId,
-          service_id: '',
-          description: item.description,
-          quantity: item.quantity,
-          unit_price: item.unitPrice,
-          tva_percent: item.tvaPercent,
-          objective_name: item.objectiveName,
-          order_index: item.orderIndex,
-          image_url: null,
-        };
-      });
-      setItems(importedItems);
-
       // Build objectives with their associated service instances
       let importedObjectives: StudyObjective[] = [];
 
@@ -2485,17 +2469,51 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         }));
       }
 
-      // Link imported items to their objectives
-      importedItems.forEach((item) => {
-        if (item.objective_name) {
-          const objective = importedObjectives.find(obj => obj.name === item.objective_name);
-          if (objective && item.instanceId) {
-            objective.serviceInstances.push(item.instanceId);
+      // Create imported items and link them to objectives
+      const importedItems = importedData.items.map((item, index) => {
+        const instanceId = `import-${Date.now()}-${index}`;
+
+        // Create a "fake" service_id for imported items
+        const fakeServiceId = `imported-${instanceId}`;
+
+        // Link this item to its objective
+        if (item.objectiveName) {
+          const objective = importedObjectives.find(obj => obj.name === item.objectiveName);
+          if (objective) {
+            objective.serviceInstances = objective.serviceInstances || [];
+            objective.serviceInstances.push({
+              instanceId: instanceId,
+              serviceId: fakeServiceId,
+              customName: item.description,
+            });
           }
         }
+
+        return {
+          instanceId,
+          service_id: fakeServiceId,
+          description: item.description,
+          service_name: item.description,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          tva_percent: item.tvaPercent,
+          objective_name: item.objectiveName,
+          order_index: item.orderIndex,
+          image_url: null,
+        };
       });
 
+      setItems(importedItems);
       setObjectives(importedObjectives);
+
+      // Set up the itemInstanceIds map
+      const instanceIdsMap = new Map<number, string>();
+      importedItems.forEach((item, index) => {
+        if (item.instanceId) {
+          instanceIdsMap.set(index, item.instanceId);
+        }
+      });
+      setItemInstanceIds(instanceIdsMap);
 
       showNotification('Fichier Excel importé avec succès', 'success');
       event.target.value = '';
