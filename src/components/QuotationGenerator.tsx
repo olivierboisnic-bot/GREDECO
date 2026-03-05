@@ -2473,39 +2473,57 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       const importedItems = importedData.items.map((item, index) => {
         const instanceId = `import-${Date.now()}-${index}`;
 
-        // Create a "fake" service_id for imported items
-        const fakeServiceId = `imported-${instanceId}`;
+        // Try to match the imported service with an existing service from the database
+        let matchedService = null;
+        let serviceId = `imported-${instanceId}`; // Default to fake ID
+
+        // Clean the description to remove MANDATORY tags for matching
+        let cleanDescription = item.description
+          .replace(/\s*-?\s*MANDATORY FOR ALL STUDIES/gi, '')
+          .replace(/\s*-?\s*MANDATORY FOR CLINICAL TRIALS/gi, '')
+          .replace(/\s*-?\s*MANDATORY FOR LABORATORY TRIALS/gi, '')
+          .trim();
+
+        // Try to find a matching service by name
+        matchedService = services.find(s =>
+          s.name.toLowerCase() === cleanDescription.toLowerCase() ||
+          s.name.toLowerCase() === item.description.toLowerCase()
+        );
+
+        if (matchedService) {
+          serviceId = matchedService.id;
+        }
 
         // Link this item to its objective
         if (item.objectiveName) {
           const objective = importedObjectives.find(obj => obj.name === item.objectiveName);
           if (objective) {
             // Add to serviceIds if not already there
-            if (!objective.serviceIds.includes(fakeServiceId)) {
-              objective.serviceIds.push(fakeServiceId);
+            if (!objective.serviceIds.includes(serviceId)) {
+              objective.serviceIds.push(serviceId);
             }
 
             // Add to serviceInstances
             objective.serviceInstances = objective.serviceInstances || [];
             objective.serviceInstances.push({
               instanceId: instanceId,
-              serviceId: fakeServiceId,
-              customName: item.description,
+              serviceId: serviceId,
+              customName: matchedService ? matchedService.name : item.description,
             });
           }
         }
 
         return {
           instanceId,
-          service_id: fakeServiceId,
+          service_id: serviceId,
           description: item.description,
-          service_name: item.description,
+          service_name: matchedService ? matchedService.name : item.description,
           quantity: item.quantity,
           unit_price: item.unitPrice,
           tva_percent: item.tvaPercent,
           objective_name: item.objectiveName,
           order_index: item.orderIndex,
-          image_url: null,
+          image_url: matchedService?.image_url || null,
         };
       });
 
@@ -2518,7 +2536,51 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         serviceInstances: obj.serviceInstances
       })));
 
-      setItems(importedItems);
+      // Set up manual quantities and prices for matched services
+      const newManualQuantities = new Map(manuallyEditedQuantitiesRef.current);
+      const newManualPrices = new Map(manuallyEditedPricesRef.current);
+      const newLoadedItemKeys = new Set<string>();
+
+      importedItems.forEach((item) => {
+        // Only set manual quantities for services that matched the database
+        if (item.service_id && !item.service_id.startsWith('imported-')) {
+          // For items with objectives, use the objective-based key
+          if (item.objective_name) {
+            const objective = importedObjectives.find(obj => obj.name === item.objective_name);
+            if (objective) {
+              const itemKey = `${item.service_id}_${objective.id}`;
+              newManualQuantities.set(itemKey, item.quantity);
+              newManualPrices.set(itemKey, item.unit_price);
+              newLoadedItemKeys.add(itemKey);
+              console.log('Set manual quantity for objective item:', itemKey, item.quantity);
+            }
+          } else {
+            // For mandatory services, use the service-based key
+            const isMandatoryForAll = item.description?.includes('MANDATORY FOR ALL STUDIES');
+            const isMandatoryClinical = item.description?.includes('MANDATORY FOR CLINICAL TRIALS');
+            const isMandatoryLab = item.description?.includes('MANDATORY FOR LABORATORY TRIALS');
+
+            let itemKey = item.service_id;
+            if (isMandatoryForAll) {
+              itemKey = `${item.service_id}_mandatory_all`;
+            } else if (isMandatoryClinical) {
+              itemKey = `${item.service_id}_mandatory_clinical`;
+            } else if (isMandatoryLab) {
+              itemKey = `${item.service_id}_mandatory_lab`;
+            }
+
+            newManualQuantities.set(itemKey, item.quantity);
+            newManualPrices.set(itemKey, item.unit_price);
+            newLoadedItemKeys.add(itemKey);
+            console.log('Set manual quantity for mandatory item:', itemKey, item.quantity);
+          }
+        }
+      });
+
+      manuallyEditedQuantitiesRef.current = newManualQuantities;
+      manuallyEditedPricesRef.current = newManualPrices;
+      setLoadedItemKeys(newLoadedItemKeys);
+
       setObjectives([...importedObjectives]); // Create new array to ensure React detects the change
 
       // Set up the itemInstanceIds map
@@ -2529,6 +2591,11 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         }
       });
       setItemInstanceIds(instanceIdsMap);
+
+      // Trigger recalculation after a short delay to ensure objectives are set
+      setTimeout(() => {
+        recalculateItemsFromObjectives();
+      }, 100);
 
       showNotification('Fichier Excel importé avec succès', 'success');
       event.target.value = '';
