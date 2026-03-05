@@ -1065,31 +1065,36 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
 
       objective.serviceIds.forEach((serviceId) => {
         const service = services.find(s => s.id === serviceId);
-        if (!service) {
+
+        // Check if this is an imported service (not in database)
+        const isImportedService = !service && serviceId.startsWith('imported-');
+
+        if (!service && !isImportedService) {
           console.log('Service not found:', serviceId);
           return;
         }
 
         // Skip if this service was already added as a mandatory service
-        if (addedServiceIds.has(service.id)) {
+        if (service && addedServiceIds.has(service.id)) {
           console.log('Skipping service already added as mandatory:', service.name);
           return;
         }
 
-        const itemKey = `${service.id}_${objective.id}`;
+        const itemKey = `${serviceId}_${objective.id}`;
 
         // Check if there are manually overridden timepoints for this specific item
         const manualTimepoints = manualTimepointsByItemKey.get(itemKey);
         const timepoints = manualTimepoints || objective.timepoints || [];
-        console.log('Adding service:', service.name, 'to objective:', objective.name, {
+        console.log('Adding service:', service?.name || 'Imported Service', 'to objective:', objective.name, {
           timepoints,
           timepointsLength: timepoints.length,
-          multiplierType: service.multiplier_type,
-          panelists
+          multiplierType: service?.multiplier_type,
+          panelists,
+          isImportedService
         });
 
         console.log('=== CHECKING QUANTITY ===');
-        console.log('Service:', service.name);
+        console.log('Service:', service?.name || 'Imported Service');
         console.log('Objective:', objective.name, 'ID:', objective.id);
         console.log('Item key:', itemKey);
         console.log('Manual quantities map has', manuallyEditedQuantitiesRef.current.size, 'entries');
@@ -1107,15 +1112,14 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
           // Use manually edited quantity (highest priority)
           quantity = manualQuantity;
           console.log('✓ Using manual quantity:', quantity);
-        } else if (loadedItemKeys.has(itemKey)) {
-          // This item was loaded from a quotation - keep its quantity from manuallyEditedQuantities
-          // Even though we checked manualQuantity above, we need to preserve loaded quantities
+        } else if (loadedItemKeys.has(itemKey) || isImportedService) {
+          // This item was loaded from a quotation OR imported from Excel - keep its quantity
           const loadedQuantity = manuallyEditedQuantitiesRef.current.get(itemKey);
           if (loadedQuantity !== undefined) {
             quantity = loadedQuantity;
             console.log('✓ Using loaded quantity (preserved):', quantity);
-          } else {
-            // Fallback to calculation if somehow the loaded quantity is missing
+          } else if (service) {
+            // Fallback to calculation if somehow the loaded quantity is missing (only for DB services)
             if (service.multiplier_type === 'panelists') {
               quantity = panelists;
             } else if (service.multiplier_type === 'timepoints') {
@@ -1149,8 +1153,12 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
               quantity = 1;
             }
             console.log('⚠️ Loaded item but no quantity found, calculating:', quantity);
+          } else {
+            // Imported service without loaded quantity - default to 1
+            quantity = 1;
+            console.log('⚠️ Imported service without loaded quantity, using 1');
           }
-        } else {
+        } else if (service) {
           // Calculate quantity based on multiplier type (for new items)
           if (service.multiplier_type === 'panelists') {
             quantity = panelists;
@@ -1188,39 +1196,45 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         }
 
         const manualPrice = manuallyEditedPricesRef.current.get(itemKey);
-        const unitPrice = manualPrice !== undefined ? manualPrice : service.base_price;
+        const unitPrice = manualPrice !== undefined ? manualPrice : (service?.base_price || 0);
 
-        console.log('Price calculation for', service.name, itemKey, {
+        console.log('Price calculation for', service?.name || 'Imported Service', itemKey, {
           manualPrice,
-          serviceBasePrice: service.base_price,
+          serviceBasePrice: service?.base_price,
           unitPrice,
-          hasManualPrice: manualPrice !== undefined
+          hasManualPrice: manualPrice !== undefined,
+          isImportedService
         });
 
         const amountWithoutTax = quantity * unitPrice;
         const subtotal = amountWithoutTax * (1 + vatRate / 100);
 
-        const existingItem = itemsRef.current.find(item => item.service_id === service.id && item.objective_name === objective.name);
-        const wasManuallyEdited = manuallyEditedItemsRef.current.has(service.id);
+        const existingItem = itemsRef.current.find(item => item.service_id === serviceId && item.objective_name === objective.name);
+        const wasManuallyEdited = service && manuallyEditedItemsRef.current.has(service.id);
 
         let description: string;
-        if (wasManuallyEdited && existingItem) {
+        if (isImportedService) {
+          const instance = (objective.serviceInstances || []).find(inst => inst.serviceId === serviceId);
+          description = instance?.customName || 'Service importé depuis Excel';
+        } else if (wasManuallyEdited && existingItem) {
           description = existingItem.description || service.description || service.name;
         } else {
           description = service.description || service.name;
         }
 
         const manualServiceName = manuallyEditedServiceNamesRef.current.get(itemKey);
-        const serviceName = manualServiceName || objective.customServiceNames?.[service.id] || service.name;
+        const serviceName = isImportedService
+          ? ((objective.serviceInstances || []).find(inst => inst.serviceId === serviceId)?.customName || 'Service importé')
+          : (manualServiceName || objective.customServiceNames?.[serviceId] || service.name);
 
         const instances = instancesGroupedByService.get(serviceId) || [];
 
         if (instances.length === 0) {
           newItems.push({
-            service_id: service.id,
+            service_id: serviceId,
             service_name: serviceName,
             description,
-            image_url: service.image_url,
+            image_url: service?.image_url || null,
             objective_id: objective.id,
             objective_name: objective.name,
             objective_timepoints: timepoints.join(', '),
@@ -1231,10 +1245,12 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
             amount_without_tax: amountWithoutTax,
             subtotal,
           });
-          addedServiceIds.add(service.id);
+          if (service) {
+            addedServiceIds.add(service.id);
+          }
         } else {
           instances.forEach((instance, idx) => {
-            const instanceItemKey = `${service.id}_${objective.id}_${instance.instanceId}`;
+            const instanceItemKey = `${serviceId}_${objective.id}_${instance.instanceId}`;
 
             // Check for manually edited service name first, then instance custom name, then serviceName
             const instanceManualServiceName = manuallyEditedServiceNamesRef.current.get(instanceItemKey);
@@ -1245,7 +1261,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
 
             // Get manual price and quantity for this specific instance
             const instanceManualPrice = manuallyEditedPricesRef.current.get(instanceItemKey);
-            const instanceUnitPrice = instanceManualPrice !== undefined ? instanceManualPrice : service.base_price;
+            const instanceUnitPrice = instanceManualPrice !== undefined ? instanceManualPrice : (service?.base_price || 0);
 
             const instanceManualQuantity = manuallyEditedQuantitiesRef.current.get(instanceItemKey);
             const instanceQuantity = instanceManualQuantity !== undefined ? instanceManualQuantity : quantity;
@@ -1260,10 +1276,10 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
             const instanceDescription = instanceManualServiceName || instance.customName || description;
 
             newItems.push({
-              service_id: service.id,
+              service_id: serviceId,
               service_name: customServiceName,
               description: instanceDescription,
-              image_url: service.image_url,
+              image_url: service?.image_url || null,
               objective_id: objective.id,
               objective_name: objective.name,
               objective_timepoints: instanceTimepoints.join(', '),
@@ -1275,7 +1291,9 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
               subtotal: instanceSubtotal,
             });
           });
-          addedServiceIds.add(service.id);
+          if (service) {
+            addedServiceIds.add(service.id);
+          }
         }
       });
     });
