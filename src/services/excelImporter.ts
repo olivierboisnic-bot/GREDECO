@@ -100,6 +100,9 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
 
           for (let i = 0; i < jsonData.length; i++) {
             const row = jsonData[i];
+
+            console.log(`Row ${i}:`, row);
+
             if (!row[0]) continue;
 
             const label = String(row[0]).trim();
@@ -107,18 +110,21 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
             // Detect sections
             if (label === 'INFORMATIONS DU DEVIS' || label === 'DÉTAILS DE L\'ÉTUDE' || label === 'OBJECTIFS DE L\'ÉTUDE') {
               currentSection = label;
+              console.log('Section changed to:', currentSection);
               continue;
             }
 
             if (label === 'SERVICES ET PRESTATIONS') {
               currentSection = label;
               servicesHeaderFound = true;
+              console.log('Section changed to SERVICES ET PRESTATIONS');
               continue;
             }
 
             if (label === 'DÉTAILS DES OBJECTIFS') {
               currentSection = label;
               objectivesDetailsHeaderFound = true;
+              console.log('Section changed to DÉTAILS DES OBJECTIFS');
               continue;
             }
 
@@ -128,11 +134,12 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
             if (currentSection === 'SERVICES ET PRESTATIONS') {
               // Skip the header row and empty rows
               if (label === 'Description' || label === '' || !label) {
+                console.log('Skipping header/empty row:', label);
                 continue;
               }
               // Parse service rows
               const itemData = {
-                description: label,
+                description: label,  // row[0]
                 quantity: parseFloat(row[1]) || 0,
                 unitPrice: parseFloat(row[2]) || 0,
                 tvaPercent: parseFloat(row[3]) || 20,
