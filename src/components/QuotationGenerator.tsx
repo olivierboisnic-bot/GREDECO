@@ -2509,8 +2509,17 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         };
       });
 
+      // Debug: Log objectives before setting
+      console.log('Imported objectives with services:', importedObjectives.map(obj => ({
+        name: obj.name,
+        serviceIdsCount: obj.serviceIds.length,
+        serviceInstancesCount: obj.serviceInstances?.length || 0,
+        serviceIds: obj.serviceIds,
+        serviceInstances: obj.serviceInstances
+      })));
+
       setItems(importedItems);
-      setObjectives(importedObjectives);
+      setObjectives([...importedObjectives]); // Create new array to ensure React detects the change
 
       // Set up the itemInstanceIds map
       const instanceIdsMap = new Map<number, string>();

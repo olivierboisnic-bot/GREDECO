@@ -714,18 +714,27 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
                       'bg-yellow-100 text-yellow-700 hover:bg-yellow-200',
                     ];
 
-                    if (!service) return null;
+                    // Skip if no instances found
+                    if (instances.length === 0) return null;
+
+                    // For imported services (no matching service in database), show the custom name
+                    const isImportedService = !service;
 
                     return instances.map((instance, instanceIdx) => {
                       const instanceColor = colors[(idx + instanceIdx) % colors.length];
+                      const displayName = isImportedService
+                        ? (instance.customName || 'Service importé')
+                        : (instanceCustomNames.get(instance.instanceId) || service.name);
+                      const defaultName = isImportedService ? (instance.customName || 'Service importé') : service.name;
+
                       return (
                         <div
                           key={instance.instanceId}
                           className="mb-3 border border-gray-200 rounded-lg p-3 bg-white"
                         >
                           <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${instanceColor}`}>
-                            <span className="max-w-[200px] truncate" title={service.name}>
-                              {instanceCustomNames.get(instance.instanceId) || service.name}
+                            <span className="max-w-[200px] truncate" title={defaultName}>
+                              {displayName}
                             </span>
                             <button
                               type="button"
@@ -736,16 +745,25 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
                               <X size={14} />
                             </button>
                           </div>
-                          <input
-                            type="text"
-                            placeholder={`Nom personnalisé (défaut: ${service.name})`}
-                            value={instanceCustomNames.get(instance.instanceId) || ''}
-                            onChange={(e) => onUpdateInstanceCustomName(instance.instanceId, e.target.value)}
-                            className="mt-1 w-full text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                          />
-                          <div className="mt-2 text-xs font-medium text-gray-700">
-                            {formatCurrency(service.base_price)} € HT par {service.unit || 'unit'}
-                          </div>
+                          {!isImportedService && (
+                            <>
+                              <input
+                                type="text"
+                                placeholder={`Nom personnalisé (défaut: ${service.name})`}
+                                value={instanceCustomNames.get(instance.instanceId) || ''}
+                                onChange={(e) => onUpdateInstanceCustomName(instance.instanceId, e.target.value)}
+                                className="mt-1 w-full text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                              />
+                              <div className="mt-2 text-xs font-medium text-gray-700">
+                                {formatCurrency(service.base_price)} € HT par {service.unit || 'unit'}
+                              </div>
+                            </>
+                          )}
+                          {isImportedService && (
+                            <div className="mt-1 text-xs text-gray-500 italic">
+                              Service importé depuis Excel
+                            </div>
+                          )}
                         </div>
                       );
                     });
