@@ -131,14 +131,16 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
                 continue;
               }
               // Parse service rows
-              result.items.push({
+              const itemData = {
                 description: label,
                 quantity: parseFloat(row[1]) || 0,
                 unitPrice: parseFloat(row[2]) || 0,
                 tvaPercent: parseFloat(row[3]) || 20,
                 objectiveName: String(row[4] || ''),
                 orderIndex: parseInt(row[5]) || result.items.length,
-              });
+              };
+              console.log('Importing service item:', itemData);
+              result.items.push(itemData);
             } else if (currentSection === 'DÉTAILS DES OBJECTIFS') {
               // Skip the header row and empty rows
               if (label === 'Objectif' || label === '' || !label) {
