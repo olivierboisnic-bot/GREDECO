@@ -1190,6 +1190,13 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         const manualPrice = manuallyEditedPricesRef.current.get(itemKey);
         const unitPrice = manualPrice !== undefined ? manualPrice : service.base_price;
 
+        console.log('Price calculation for', service.name, itemKey, {
+          manualPrice,
+          serviceBasePrice: service.base_price,
+          unitPrice,
+          hasManualPrice: manualPrice !== undefined
+        });
+
         const amountWithoutTax = quantity * unitPrice;
         const subtotal = amountWithoutTax * (1 + vatRate / 100);
 
@@ -2490,6 +2497,14 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
           s.name.toLowerCase() === item.description.toLowerCase()
         );
 
+        console.log('Import matching:', {
+          originalDescription: item.description,
+          cleanDescription,
+          matchedService: matchedService?.name,
+          matchedServiceId: matchedService?.id,
+          matchedPrice: matchedService?.price
+        });
+
         if (matchedService) {
           serviceId = matchedService.id;
         }
@@ -2580,6 +2595,12 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       manuallyEditedQuantitiesRef.current = newManualQuantities;
       manuallyEditedPricesRef.current = newManualPrices;
       setLoadedItemKeys(newLoadedItemKeys);
+
+      console.log('=== IMPORT COMPLETE ===');
+      console.log('Manual quantities:', Array.from(newManualQuantities.entries()));
+      console.log('Manual prices:', Array.from(newManualPrices.entries()));
+      console.log('Loaded item keys:', Array.from(newLoadedItemKeys));
+      console.log('Objectives:', importedObjectives);
 
       setObjectives([...importedObjectives]); // Create new array to ensure React detects the change
 
