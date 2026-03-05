@@ -85,8 +85,149 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
           globalDiscountPercent: 0,
         };
 
-        // Sheet 1: Informations
-        if (workbook.SheetNames.includes('Informations')) {
+        // Check if new format (single sheet) or old format (multi-sheet)
+        const hasNewFormat = workbook.SheetNames.includes('Devis Complet');
+        const hasOldFormat = workbook.SheetNames.includes('Informations');
+
+        if (hasNewFormat) {
+          // New single-sheet format
+          const sheet = workbook.Sheets['Devis Complet'];
+          const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+
+          let currentSection = '';
+          let servicesHeaderFound = false;
+          let objectivesDetailsHeaderFound = false;
+
+          for (let i = 0; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            if (!row[0]) continue;
+
+            const label = String(row[0]).trim();
+
+            // Detect sections
+            if (label === 'INFORMATIONS DU DEVIS' || label === 'DÉTAILS DE L\'ÉTUDE' || label === 'OBJECTIFS DE L\'ÉTUDE') {
+              currentSection = label;
+              continue;
+            }
+
+            if (label === 'SERVICES ET PRESTATIONS') {
+              currentSection = label;
+              servicesHeaderFound = true;
+              continue;
+            }
+
+            if (label === 'DÉTAILS DES OBJECTIFS') {
+              currentSection = label;
+              objectivesDetailsHeaderFound = true;
+              continue;
+            }
+
+            // Skip section headers in SERVICES section
+            if (servicesHeaderFound && label === 'Description') {
+              continue;
+            }
+
+            // Skip section headers in DÉTAILS DES OBJECTIFS section
+            if (objectivesDetailsHeaderFound && label === 'Objectif') {
+              continue;
+            }
+
+            const value = row[1] !== undefined ? String(row[1]).trim() : '';
+
+            // Parse based on current section
+            if (currentSection === 'SERVICES ET PRESTATIONS') {
+              // Parse service rows
+              if (label && label !== 'Description') {
+                result.items.push({
+                  description: label,
+                  quantity: parseFloat(row[1]) || 0,
+                  unitPrice: parseFloat(row[2]) || 0,
+                  tvaPercent: parseFloat(row[3]) || 20,
+                  objectiveName: String(row[4] || ''),
+                  orderIndex: parseInt(row[5]) || result.items.length,
+                });
+              }
+            } else if (currentSection === 'DÉTAILS DES OBJECTIFS') {
+              // Parse objective details
+              if (label && label !== 'Objectif') {
+                result.objectivesData.push({
+                  name: label,
+                  timepoints: value.split(',').map(t => t.trim()).filter(t => t),
+                });
+              }
+            } else {
+              // Parse quotation info, customer info, and study design
+              switch (label) {
+                case 'Devis':
+                  result.quotationInfo.quotationNumber = value;
+                  break;
+                case 'Date':
+                  result.quotationInfo.quotationDate = value;
+                  break;
+                case 'Étude':
+                  result.quotationInfo.studyTitle = value;
+                  break;
+                case 'Client':
+                  result.customerInfo.name = value;
+                  break;
+                case 'Société':
+                  result.customerInfo.company = value;
+                  break;
+                case 'Adresse':
+                  result.customerInfo.address = value;
+                  break;
+                case 'Code Postal':
+                  result.customerInfo.postalCode = value;
+                  break;
+                case 'Ville':
+                  result.customerInfo.city = value;
+                  break;
+                case 'Pays':
+                  result.customerInfo.country = value;
+                  break;
+                case 'Email':
+                  result.customerInfo.emails = value.split(',').map(e => e.trim()).filter(e => e);
+                  break;
+                case 'Langue':
+                  result.quotationInfo.language = value === 'en' ? 'en' : 'fr';
+                  break;
+                case 'Méthodologie':
+                  result.studyDesign.methodology = value;
+                  break;
+                case 'Critères d\'Inclusion':
+                  result.studyDesign.inclusionCriteria = value.split(';').map(c => c.trim()).filter(c => c);
+                  break;
+                case 'Critères d\'Exclusion':
+                  result.studyDesign.exclusionCriteria = value.split(';').map(c => c.trim()).filter(c => c);
+                  break;
+                case 'Nombre de Panélistes':
+                  result.studyDesign.numberOfPanelists = parseInt(value) || 30;
+                  break;
+                case 'Type d\'étude':
+                  result.studyDesign.studyType = value;
+                  break;
+                case 'Nombre de Conditions':
+                  result.studyDesign.numberOfConditions = parseInt(value) || 1;
+                  break;
+                case 'Phototypes':
+                  result.studyDesign.skinTypes = value.split(',').map(s => s.trim()).filter(s => s);
+                  break;
+                case 'Points de Mesure':
+                  result.studyDesign.timepoints = value;
+                  break;
+                case 'Remise Globale (%)':
+                  result.globalDiscountPercent = parseFloat(value) || 0;
+                  break;
+                default:
+                  if (label.startsWith('Objectif ')) {
+                    result.objectives.push(value);
+                  }
+                  break;
+              }
+            }
+          }
+        } else if (hasOldFormat) {
+          // Old multi-sheet format (backward compatibility)
           const sheet = workbook.Sheets['Informations'];
           const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
 
@@ -164,41 +305,41 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
                 break;
             }
           }
-        }
 
-        // Sheet 2: Services
-        if (workbook.SheetNames.includes('Services')) {
-          const sheet = workbook.Sheets['Services'];
-          const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+          // Old format: Sheet 2: Services
+          if (workbook.SheetNames.includes('Services')) {
+            const sheet = workbook.Sheets['Services'];
+            const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
 
-          for (let i = 1; i < jsonData.length; i++) {
-            const row = jsonData[i];
-            if (!row[0]) continue;
+            for (let i = 1; i < jsonData.length; i++) {
+              const row = jsonData[i];
+              if (!row[0]) continue;
 
-            result.items.push({
-              description: String(row[0] || ''),
-              quantity: parseFloat(row[1]) || 0,
-              unitPrice: parseFloat(row[2]) || 0,
-              tvaPercent: parseFloat(row[3]) || 20,
-              objectiveName: String(row[4] || ''),
-              orderIndex: parseInt(row[5]) || i - 1,
-            });
+              result.items.push({
+                description: String(row[0] || ''),
+                quantity: parseFloat(row[1]) || 0,
+                unitPrice: parseFloat(row[2]) || 0,
+                tvaPercent: parseFloat(row[3]) || 20,
+                objectiveName: String(row[4] || ''),
+                orderIndex: parseInt(row[5]) || i - 1,
+              });
+            }
           }
-        }
 
-        // Sheet 3: Objectifs Détails
-        if (workbook.SheetNames.includes('Objectifs Détails')) {
-          const sheet = workbook.Sheets['Objectifs Détails'];
-          const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+          // Old format: Sheet 3: Objectifs Détails
+          if (workbook.SheetNames.includes('Objectifs Détails')) {
+            const sheet = workbook.Sheets['Objectifs Détails'];
+            const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
 
-          for (let i = 1; i < jsonData.length; i++) {
-            const row = jsonData[i];
-            if (!row[0]) continue;
+            for (let i = 1; i < jsonData.length; i++) {
+              const row = jsonData[i];
+              if (!row[0]) continue;
 
-            result.objectivesData.push({
-              name: String(row[0] || ''),
-              timepoints: String(row[1] || '').split(',').map(t => t.trim()).filter(t => t),
-            });
+              result.objectivesData.push({
+                name: String(row[0] || ''),
+                timepoints: String(row[1] || '').split(',').map(t => t.trim()).filter(t => t),
+              });
+            }
           }
         }
 
