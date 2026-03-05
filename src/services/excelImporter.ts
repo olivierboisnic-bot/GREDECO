@@ -132,11 +132,11 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
               }
               // Parse service rows
               result.items.push({
-                description: label,
+                description: label.trim(),
                 quantity: parseFloat(row[1]) || 0,
                 unitPrice: parseFloat(row[2]) || 0,
                 tvaPercent: parseFloat(row[3]) || 20,
-                objectiveName: String(row[4] || ''),
+                objectiveName: String(row[4] || '').trim(),
                 orderIndex: parseInt(row[5]) || result.items.length,
               });
             } else if (currentSection === 'DÉTAILS DES OBJECTIFS') {
@@ -146,7 +146,7 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
               }
               // Parse objective details
               result.objectivesData.push({
-                name: label,
+                name: label.trim(),
                 timepoints: value.split(',').map(t => t.trim()).filter(t => t),
               });
             } else {
@@ -214,7 +214,7 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
                   break;
                 default:
                   if (label.startsWith('Objectif ')) {
-                    result.objectives.push(value);
+                    result.objectives.push(value.trim());
                   }
                   break;
               }
@@ -310,11 +310,11 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
               if (!row[0]) continue;
 
               result.items.push({
-                description: String(row[0] || ''),
+                description: String(row[0] || '').trim(),
                 quantity: parseFloat(row[1]) || 0,
                 unitPrice: parseFloat(row[2]) || 0,
                 tvaPercent: parseFloat(row[3]) || 20,
-                objectiveName: String(row[4] || ''),
+                objectiveName: String(row[4] || '').trim(),
                 orderIndex: parseInt(row[5]) || i - 1,
               });
             }
@@ -330,7 +330,7 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
               if (!row[0]) continue;
 
               result.objectivesData.push({
-                name: String(row[0] || ''),
+                name: String(row[0] || '').trim(),
                 timepoints: String(row[1] || '').split(',').map(t => t.trim()).filter(t => t),
               });
             }
