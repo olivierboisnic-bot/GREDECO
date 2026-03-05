@@ -2451,6 +2451,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       const importedItems = importedData.items.map((item, index) => {
         const instanceId = `${item.description}-${Date.now()}-${index}`;
         return {
+          instanceId,
           service_id: '',
           description: item.description,
           quantity: item.quantity,
@@ -2463,25 +2464,38 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       });
       setItems(importedItems);
 
+      // Build objectives with their associated service instances
+      let importedObjectives: StudyObjective[] = [];
+
       if (importedData.objectivesData.length > 0) {
-        const importedObjectives = importedData.objectivesData.map((objData) => ({
+        importedObjectives = importedData.objectivesData.map((objData) => ({
           id: generateStableObjectiveId(objData.name),
           name: objData.name,
           timepoints: objData.timepoints,
           serviceIds: [],
           serviceInstances: [],
         }));
-        setObjectives(importedObjectives);
       } else if (importedData.objectives.length > 0) {
-        const importedObjectives = importedData.objectives.map((objName) => ({
+        importedObjectives = importedData.objectives.map((objName) => ({
           id: generateStableObjectiveId(objName),
           name: objName,
           timepoints: ['T0'],
           serviceIds: [],
           serviceInstances: [],
         }));
-        setObjectives(importedObjectives);
       }
+
+      // Link imported items to their objectives
+      importedItems.forEach((item) => {
+        if (item.objective_name) {
+          const objective = importedObjectives.find(obj => obj.name === item.objective_name);
+          if (objective && item.instanceId) {
+            objective.serviceInstances.push(item.instanceId);
+          }
+        }
+      });
+
+      setObjectives(importedObjectives);
 
       showNotification('Fichier Excel importé avec succès', 'success');
       event.target.value = '';
