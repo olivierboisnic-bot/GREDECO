@@ -2480,6 +2480,12 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         if (item.objectiveName) {
           const objective = importedObjectives.find(obj => obj.name === item.objectiveName);
           if (objective) {
+            // Add to serviceIds if not already there
+            if (!objective.serviceIds.includes(fakeServiceId)) {
+              objective.serviceIds.push(fakeServiceId);
+            }
+
+            // Add to serviceInstances
             objective.serviceInstances = objective.serviceInstances || [];
             objective.serviceInstances.push({
               instanceId: instanceId,
