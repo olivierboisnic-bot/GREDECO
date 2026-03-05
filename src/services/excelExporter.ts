@@ -97,8 +97,19 @@ export function generateExcelFromQuotation({ quotation, items }: ExcelExportData
   allData.push(['Description', 'Quantité', 'Prix Unitaire HT', 'TVA (%)', 'Objectif', 'Ordre']);
 
   items.forEach((item) => {
+    // Use service_name if available, otherwise fallback to description
+    // Clean up the description by removing MANDATORY tags
+    let cleanDescription = item.service_name || item.description || '';
+    if (!item.service_name && item.description) {
+      cleanDescription = item.description
+        .replace(/\s*-?\s*MANDATORY FOR ALL STUDIES/gi, '')
+        .replace(/\s*-?\s*MANDATORY FOR CLINICAL TRIALS/gi, '')
+        .replace(/\s*-?\s*MANDATORY FOR LABORATORY TRIALS/gi, '')
+        .trim();
+    }
+
     allData.push([
-      item.description || '',
+      cleanDescription,
       item.quantity || 0,
       item.unit_price || 0,
       item.tva_percent || 20,

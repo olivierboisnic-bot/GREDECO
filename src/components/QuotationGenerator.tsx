@@ -899,7 +899,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       newItems.push({
         service_id: service.id,
         service_name: serviceName,
-        description: `${service.description} - MANDATORY FOR ALL STUDIES`,
+        description: `${service.description || service.name} - MANDATORY FOR ALL STUDIES`,
         image_url: service.image_url,
         quantity,
         unit_price: unitPrice,
@@ -971,7 +971,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         newItems.push({
           service_id: service.id,
           service_name: serviceName,
-          description: `${service.description} - MANDATORY FOR CLINICAL TRIALS`,
+          description: `${service.description || service.name} - MANDATORY FOR CLINICAL TRIALS`,
           image_url: service.image_url,
           quantity,
           unit_price: unitPrice,
@@ -1036,7 +1036,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         newItems.push({
           service_id: service.id,
           service_name: serviceName,
-          description: `${service.description} - MANDATORY FOR LABORATORY TRIALS`,
+          description: `${service.description || service.name} - MANDATORY FOR LABORATORY TRIALS`,
           image_url: service.image_url,
           quantity,
           unit_price: unitPrice,
