@@ -122,39 +122,33 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
               continue;
             }
 
-            // Skip section headers in SERVICES section
-            if (servicesHeaderFound && label === 'Description') {
-              continue;
-            }
-
-            // Skip section headers in DÉTAILS DES OBJECTIFS section
-            if (objectivesDetailsHeaderFound && label === 'Objectif') {
-              continue;
-            }
-
             const value = row[1] !== undefined ? String(row[1]).trim() : '';
 
             // Parse based on current section
             if (currentSection === 'SERVICES ET PRESTATIONS') {
+              // Skip the header row and empty rows
+              if (label === 'Description' || label === '' || !label) {
+                continue;
+              }
               // Parse service rows
-              if (label && label !== 'Description') {
-                result.items.push({
-                  description: label,
-                  quantity: parseFloat(row[1]) || 0,
-                  unitPrice: parseFloat(row[2]) || 0,
-                  tvaPercent: parseFloat(row[3]) || 20,
-                  objectiveName: String(row[4] || ''),
-                  orderIndex: parseInt(row[5]) || result.items.length,
-                });
-              }
+              result.items.push({
+                description: label,
+                quantity: parseFloat(row[1]) || 0,
+                unitPrice: parseFloat(row[2]) || 0,
+                tvaPercent: parseFloat(row[3]) || 20,
+                objectiveName: String(row[4] || ''),
+                orderIndex: parseInt(row[5]) || result.items.length,
+              });
             } else if (currentSection === 'DÉTAILS DES OBJECTIFS') {
-              // Parse objective details
-              if (label && label !== 'Objectif') {
-                result.objectivesData.push({
-                  name: label,
-                  timepoints: value.split(',').map(t => t.trim()).filter(t => t),
-                });
+              // Skip the header row and empty rows
+              if (label === 'Objectif' || label === '' || !label) {
+                continue;
               }
+              // Parse objective details
+              result.objectivesData.push({
+                name: label,
+                timepoints: value.split(',').map(t => t.trim()).filter(t => t),
+              });
             } else {
               // Parse quotation info, customer info, and study design
               switch (label) {
