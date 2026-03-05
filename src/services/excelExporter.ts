@@ -9,8 +9,11 @@ interface ExcelExportData {
 export function generateExcelFromQuotation({ quotation, items }: ExcelExportData): void {
   const workbook = XLSX.utils.book_new();
 
-  // Sheet 1: Quotation Info
-  const quotationData = [
+  // Single sheet with all information
+  const allData: any[][] = [
+    // Header section
+    ['INFORMATIONS DU DEVIS'],
+    [''],
     ['Devis', quotation.quotation_number || ''],
     ['Date', quotation.quotation_date || ''],
     ['Étude', quotation.study_name || ''],
@@ -22,6 +25,8 @@ export function generateExcelFromQuotation({ quotation, items }: ExcelExportData
     ['Pays', quotation.customer_country || ''],
     ['Email', Array.isArray(quotation.customer_email) ? quotation.customer_email.join(', ') : quotation.customer_email || ''],
     ['Langue', quotation.language || 'fr'],
+    [''],
+    ['DÉTAILS DE L\'ÉTUDE'],
     [''],
     ['Méthodologie', quotation.methodology || quotation.notes || ''],
     [''],
@@ -36,52 +41,28 @@ export function generateExcelFromQuotation({ quotation, items }: ExcelExportData
     [''],
     ['Remise Globale (%)', quotation.global_discount_percent || 0],
     [''],
-    ['Objectifs de l\'étude', ''],
   ];
 
   // Add study objectives
   if (quotation.study_objectives) {
+    allData.push(['OBJECTIFS DE L\'ÉTUDE']);
+    allData.push(['']);
     if (typeof quotation.study_objectives === 'string') {
       const objectivesArray = quotation.study_objectives.split(',').map(o => o.trim()).filter(o => o);
       objectivesArray.forEach((obj: string, index: number) => {
-        quotationData.push([`Objectif ${index + 1}`, obj]);
+        allData.push([`Objectif ${index + 1}`, obj]);
       });
     } else if (Array.isArray(quotation.study_objectives)) {
       quotation.study_objectives.forEach((obj: string, index: number) => {
-        quotationData.push([`Objectif ${index + 1}`, obj]);
+        allData.push([`Objectif ${index + 1}`, obj]);
       });
     }
+    allData.push(['']);
   }
 
-  const quotationSheet = XLSX.utils.aoa_to_sheet(quotationData);
-  XLSX.utils.book_append_sheet(workbook, quotationSheet, 'Informations');
-
-  // Sheet 2: Items/Services
-  const itemsData: any[][] = [
-    ['Description', 'Quantité', 'Prix Unitaire HT', 'TVA (%)', 'Objectif', 'Ordre']
-  ];
-
-  items.forEach((item) => {
-    itemsData.push([
-      item.description || '',
-      item.quantity || 0,
-      item.unit_price || 0,
-      item.tva_percent || 20,
-      item.objective_name || '',
-      item.order_index || 0
-    ]);
-  });
-
-  const itemsSheet = XLSX.utils.aoa_to_sheet(itemsData);
-  XLSX.utils.book_append_sheet(workbook, itemsSheet, 'Services');
-
-  // Sheet 3: Objectives Details with timepoints (if available)
+  // Add objectives details with timepoints if available
   if (quotation.objectives_data) {
     try {
-      const objectivesData: any[][] = [
-        ['Objectif', 'Points de Mesure']
-      ];
-
       let parsedObjectives: any[] = [];
       if (typeof quotation.objectives_data === 'string') {
         parsedObjectives = JSON.parse(quotation.objectives_data);
@@ -94,24 +75,51 @@ export function generateExcelFromQuotation({ quotation, items }: ExcelExportData
         }));
       }
 
-      parsedObjectives.forEach((obj: any) => {
-        if (obj && obj.name) {
-          const timepoints = Array.isArray(obj.timepoints) ? obj.timepoints.join(', ') : obj.timepoints || '';
-          objectivesData.push([
-            obj.name,
-            timepoints
-          ]);
-        }
-      });
-
-      if (objectivesData.length > 1) {
-        const objectivesSheet = XLSX.utils.aoa_to_sheet(objectivesData);
-        XLSX.utils.book_append_sheet(workbook, objectivesSheet, 'Objectifs Détails');
+      if (parsedObjectives.length > 0) {
+        allData.push(['DÉTAILS DES OBJECTIFS']);
+        allData.push(['Objectif', 'Points de Mesure']);
+        parsedObjectives.forEach((obj: any) => {
+          if (obj && obj.name) {
+            const timepoints = Array.isArray(obj.timepoints) ? obj.timepoints.join(', ') : obj.timepoints || '';
+            allData.push([obj.name, timepoints]);
+          }
+        });
+        allData.push(['']);
       }
     } catch (e) {
       console.error('Error parsing objectives_data for Excel export:', e);
     }
   }
+
+  // Services section
+  allData.push(['SERVICES ET PRESTATIONS']);
+  allData.push(['']);
+  allData.push(['Description', 'Quantité', 'Prix Unitaire HT', 'TVA (%)', 'Objectif', 'Ordre']);
+
+  items.forEach((item) => {
+    allData.push([
+      item.description || '',
+      item.quantity || 0,
+      item.unit_price || 0,
+      item.tva_percent || 20,
+      item.objective_name || '',
+      item.order_index || 0
+    ]);
+  });
+
+  const worksheet = XLSX.utils.aoa_to_sheet(allData);
+
+  // Set column widths for better readability
+  worksheet['!cols'] = [
+    { wch: 30 },  // Column A - Labels/Description
+    { wch: 15 },  // Column B - Values/Quantité
+    { wch: 20 },  // Column C - Prix Unitaire HT
+    { wch: 10 },  // Column D - TVA
+    { wch: 40 },  // Column E - Objectif
+    { wch: 10 }   // Column F - Ordre
+  ];
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Devis Complet');
 
   // Generate filename
   const filename = `${quotation.quotation_number || 'devis'}_${quotation.customer_company || 'client'}_${new Date().toISOString().split('T')[0]}.xlsx`;

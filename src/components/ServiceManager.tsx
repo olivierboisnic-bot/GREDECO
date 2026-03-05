@@ -182,20 +182,66 @@ export default function ServiceManager() {
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
 
-      // Check if this is a quotation export (has "Informations" and "Services" sheets)
-      const isQuotationExport = workbook.SheetNames.includes('Informations') && workbook.SheetNames.includes('Services');
+      // Check if this is a quotation export
+      // New format: single sheet with "Devis Complet"
+      // Old format: multiple sheets with "Informations" and "Services"
+      const hasNewFormat = workbook.SheetNames.includes('Devis Complet');
+      const hasOldFormat = workbook.SheetNames.includes('Informations') && workbook.SheetNames.includes('Services');
+      const isQuotationExport = hasNewFormat || hasOldFormat;
 
       if (isQuotationExport) {
         // Import from quotation export with objective grouping
-        const servicesSheet = workbook.Sheets['Services'];
-        const jsonData = XLSX.utils.sheet_to_json(servicesSheet);
+        let servicesData: any[] = [];
 
-        if (jsonData.length === 0) {
+        if (hasNewFormat) {
+          // New single-sheet format
+          const sheet = workbook.Sheets['Devis Complet'];
+          const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+
+          // Find the services section (starts with "SERVICES ET PRESTATIONS")
+          let servicesStartIndex = -1;
+          for (let i = 0; i < allRows.length; i++) {
+            if (allRows[i][0] === 'SERVICES ET PRESTATIONS') {
+              servicesStartIndex = i;
+              break;
+            }
+          }
+
+          if (servicesStartIndex === -1) {
+            alert('No services section found in the quotation file.');
+            return;
+          }
+
+          // Find the header row (should be 2 rows after "SERVICES ET PRESTATIONS")
+          const headerRowIndex = servicesStartIndex + 2;
+          const headers = allRows[headerRowIndex];
+
+          // Parse services rows
+          for (let i = headerRowIndex + 1; i < allRows.length; i++) {
+            const row = allRows[i];
+            if (!row || !row[0] || row[0] === '') break; // Stop at empty row
+
+            servicesData.push({
+              Description: row[0],
+              'Quantité': row[1],
+              'Prix Unitaire HT': row[2],
+              'TVA (%)': row[3],
+              'Objectif': row[4],
+              'Ordre': row[5]
+            });
+          }
+        } else {
+          // Old multi-sheet format
+          const servicesSheet = workbook.Sheets['Services'];
+          servicesData = XLSX.utils.sheet_to_json(servicesSheet);
+        }
+
+        if (servicesData.length === 0) {
           alert('No services found in the quotation file.');
           return;
         }
 
-        console.log('Quotation import - first row:', jsonData[0]);
+        console.log('Quotation import - first row:', servicesData[0]);
 
         // Group services by objective
         const servicesByObjective = new Map<string, Array<{
@@ -208,7 +254,7 @@ export default function ServiceManager() {
         // Get existing service names to check for duplicates
         const existingServiceNames = new Set(services.map(s => s.name.toLowerCase().trim()));
 
-        for (const row of jsonData) {
+        for (const row of servicesData) {
           const description = (row as any)['Description'] || '';
           const quantity = parseFloat((row as any)['Quantité'] || '0');
           const unitPrice = parseFloat((row as any)['Prix Unitaire HT'] || '0');
