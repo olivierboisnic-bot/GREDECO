@@ -2584,8 +2584,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       const newLoadedItemKeys = new Set<string>();
 
       importedItems.forEach((item) => {
-        // Only set manual quantities for services that matched the database
-        if (item.service_id && !item.service_id.startsWith('imported-')) {
+        if (item.service_id) {
           // For items with objectives, use the objective-based key
           if (item.objective_name) {
             const objective = importedObjectives.find(obj => obj.name === item.objective_name);
@@ -2594,7 +2593,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
               newManualQuantities.set(itemKey, item.quantity);
               newManualPrices.set(itemKey, item.unit_price);
               newLoadedItemKeys.add(itemKey);
-              console.log('Set manual quantity for objective item:', itemKey, item.quantity);
+              console.log('Set manual quantity for objective item:', itemKey, 'qty:', item.quantity, 'price:', item.unit_price);
             }
           } else {
             // For mandatory services, use the service-based key
@@ -2614,7 +2613,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
             newManualQuantities.set(itemKey, item.quantity);
             newManualPrices.set(itemKey, item.unit_price);
             newLoadedItemKeys.add(itemKey);
-            console.log('Set manual quantity for mandatory item:', itemKey, item.quantity);
+            console.log('Set manual quantity for mandatory item:', itemKey, 'qty:', item.quantity, 'price:', item.unit_price);
           }
         }
       });
