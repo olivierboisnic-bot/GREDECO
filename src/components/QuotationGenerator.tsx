@@ -89,10 +89,21 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
   const manuallyEditedPricesRef = useRef<Map<string, number>>(new Map());
   const manuallyEditedServiceNamesRef = useRef<Map<string, string>>(new Map());
   const manuallyEditedItemsRef = useRef<Set<string>>(new Set());
+  const loadedItemKeysRef = useRef<Set<string>>(new Set());
+  const manualTimepointsByItemKeyRef = useRef<Map<string, string[]>>(new Map());
 
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
+
+  // Sync refs with state for loadedItemKeys and manualTimepointsByItemKey
+  useEffect(() => {
+    loadedItemKeysRef.current = loadedItemKeys;
+  }, [loadedItemKeys]);
+
+  useEffect(() => {
+    manualTimepointsByItemKeyRef.current = manualTimepointsByItemKey;
+  }, [manualTimepointsByItemKey]);
 
   // DON'T sync ref from state - causes race conditions
   // The ref is the source of truth, state is only for debugging
@@ -1083,7 +1094,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         const itemKey = `${serviceId}_${objective.id}`;
 
         // Check if there are manually overridden timepoints for this specific item
-        const manualTimepoints = manualTimepointsByItemKey.get(itemKey);
+        const manualTimepoints = manualTimepointsByItemKeyRef.current.get(itemKey);
         const timepoints = manualTimepoints || objective.timepoints || [];
         console.log('Adding service:', service?.name || 'Imported Service', 'to objective:', objective.name, {
           timepoints,
@@ -1105,14 +1116,14 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         let quantity = 1;
 
         console.log('Manual quantity for this key:', manualQuantity);
-        console.log('Is loaded item?', loadedItemKeys.has(itemKey));
+        console.log('Is loaded item?', loadedItemKeysRef.current.has(itemKey));
 
         // Priority: 1) Manual edit, 2) Loaded from quotation, 3) Calculate
         if (manualQuantity !== undefined) {
           // Use manually edited quantity (highest priority)
           quantity = manualQuantity;
           console.log('✓ Using manual quantity:', quantity);
-        } else if (loadedItemKeys.has(itemKey) || isImportedService) {
+        } else if (loadedItemKeysRef.current.has(itemKey) || isImportedService) {
           // This item was loaded from a quotation OR imported from Excel - keep its quantity
           const loadedQuantity = manuallyEditedQuantitiesRef.current.get(itemKey);
           if (loadedQuantity !== undefined) {
@@ -1211,7 +1222,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
           unitPrice,
           hasManualPrice: manualPrice !== undefined,
           isImportedService,
-          isLoadedItem: loadedItemKeys.has(itemKey)
+          isLoadedItem: loadedItemKeysRef.current.has(itemKey)
         });
 
         const amountWithoutTax = quantity * unitPrice;
@@ -1264,7 +1275,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
             const instanceManualServiceName = manuallyEditedServiceNamesRef.current.get(instanceItemKey);
             const customServiceName = instanceManualServiceName || instance.customName || serviceName;
 
-            const instanceManualTimepoints = manualTimepointsByItemKey.get(instanceItemKey);
+            const instanceManualTimepoints = manualTimepointsByItemKeyRef.current.get(instanceItemKey);
             const instanceTimepoints = instanceManualTimepoints || objective.timepoints || [];
 
             // Get manual price and quantity for this specific instance
@@ -1382,8 +1393,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       const serviceId = item.service_id;
 
       const itemKey = getItemKey(item, index);
-      if (manualTimepointsByItemKey.has(itemKey)) {
-        newItemTimepoints[index] = manualTimepointsByItemKey.get(itemKey)!;
+      if (manualTimepointsByItemKeyRef.current.has(itemKey)) {
+        newItemTimepoints[index] = manualTimepointsByItemKeyRef.current.get(itemKey)!;
         return;
       }
 
@@ -2629,10 +2640,11 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         }
       });
 
+      // Update refs immediately for synchronous access
       manuallyEditedQuantitiesRef.current = newManualQuantities;
       manuallyEditedPricesRef.current = newManualPrices;
-      setLoadedItemKeys(newLoadedItemKeys);
-      setManualTimepointsByItemKey(newManualTimepoints);
+      loadedItemKeysRef.current = newLoadedItemKeys;
+      manualTimepointsByItemKeyRef.current = newManualTimepoints;
 
       console.log('=== IMPORT COMPLETE ===');
       console.log('Manual quantities:', Array.from(newManualQuantities.entries()));
@@ -2641,7 +2653,10 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       console.log('Loaded item keys:', Array.from(newLoadedItemKeys));
       console.log('Objectives:', importedObjectives);
 
-      setObjectives([...importedObjectives]); // Create new array to ensure React detects the change
+      // Update all state for UI
+      setLoadedItemKeys(newLoadedItemKeys);
+      setManualTimepointsByItemKey(newManualTimepoints);
+      setObjectives([...importedObjectives]);
 
       // Set up the itemInstanceIds map
       const instanceIdsMap = new Map<number, string>();
@@ -2652,10 +2667,13 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       });
       setItemInstanceIds(instanceIdsMap);
 
-      // Trigger recalculation after a short delay to ensure objectives are set
+      // Trigger recalculation after state updates have time to propagate
       setTimeout(() => {
+        console.log('=== BEFORE RECALCULATE ===');
+        console.log('Refs - Manual quantities:', Array.from(manuallyEditedQuantitiesRef.current.entries()));
+        console.log('Refs - Manual prices:', Array.from(manuallyEditedPricesRef.current.entries()));
         recalculateItemsFromObjectives();
-      }, 100);
+      }, 150);
 
       showNotification('Fichier Excel importé avec succès', 'success');
       event.target.value = '';
