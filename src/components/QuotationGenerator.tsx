@@ -1196,14 +1196,22 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         }
 
         const manualPrice = manuallyEditedPricesRef.current.get(itemKey);
-        const unitPrice = manualPrice !== undefined ? manualPrice : (service?.base_price || 0);
+        let unitPrice = 0;
+
+        // Priority: 1) Manual/loaded price, 2) Service base price, 3) Default to 0
+        if (manualPrice !== undefined) {
+          unitPrice = manualPrice;
+        } else if (service) {
+          unitPrice = service.base_price || 0;
+        }
 
         console.log('Price calculation for', service?.name || 'Imported Service', itemKey, {
           manualPrice,
           serviceBasePrice: service?.base_price,
           unitPrice,
           hasManualPrice: manualPrice !== undefined,
-          isImportedService
+          isImportedService,
+          isLoadedItem: loadedItemKeys.has(itemKey)
         });
 
         const amountWithoutTax = quantity * unitPrice;
@@ -2579,8 +2587,9 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       })));
 
       // Set up manual quantities, prices, and timepoints for matched services
-      const newManualQuantities = new Map(manuallyEditedQuantitiesRef.current);
-      const newManualPrices = new Map(manuallyEditedPricesRef.current);
+      // Start fresh for imports - don't carry over old manual edits
+      const newManualQuantities = new Map<string, number>();
+      const newManualPrices = new Map<string, number>();
       const newManualTimepoints = new Map<string, string[]>();
       const newLoadedItemKeys = new Set<string>();
 
