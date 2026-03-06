@@ -2578,9 +2578,10 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         serviceInstances: obj.serviceInstances
       })));
 
-      // Set up manual quantities and prices for matched services
+      // Set up manual quantities, prices, and timepoints for matched services
       const newManualQuantities = new Map(manuallyEditedQuantitiesRef.current);
       const newManualPrices = new Map(manuallyEditedPricesRef.current);
+      const newManualTimepoints = new Map<string, string[]>();
       const newLoadedItemKeys = new Set<string>();
 
       importedItems.forEach((item) => {
@@ -2592,8 +2593,9 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
               const itemKey = `${item.service_id}_${objective.id}`;
               newManualQuantities.set(itemKey, item.quantity);
               newManualPrices.set(itemKey, item.unit_price);
+              newManualTimepoints.set(itemKey, objective.timepoints);
               newLoadedItemKeys.add(itemKey);
-              console.log('Set manual quantity for objective item:', itemKey, 'qty:', item.quantity, 'price:', item.unit_price);
+              console.log('Set manual quantity for objective item:', itemKey, 'qty:', item.quantity, 'price:', item.unit_price, 'timepoints:', objective.timepoints);
             }
           } else {
             // For mandatory services, use the service-based key
@@ -2621,10 +2623,12 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       manuallyEditedQuantitiesRef.current = newManualQuantities;
       manuallyEditedPricesRef.current = newManualPrices;
       setLoadedItemKeys(newLoadedItemKeys);
+      setManualTimepointsByItemKey(newManualTimepoints);
 
       console.log('=== IMPORT COMPLETE ===');
       console.log('Manual quantities:', Array.from(newManualQuantities.entries()));
       console.log('Manual prices:', Array.from(newManualPrices.entries()));
+      console.log('Manual timepoints:', Array.from(newManualTimepoints.entries()));
       console.log('Loaded item keys:', Array.from(newLoadedItemKeys));
       console.log('Objectives:', importedObjectives);
 
