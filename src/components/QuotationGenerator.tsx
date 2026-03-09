@@ -138,6 +138,10 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
   useEffect(() => {
     if (editingQuotationId) {
       loadQuotationForEdit(editingQuotationId);
+    } else if (isEditMode || hasLoadedQuotation) {
+      // Reset form when switching from edit mode to create mode
+      // or when switching back after having loaded a quotation
+      resetForm();
     }
   }, [editingQuotationId]);
 
@@ -2425,6 +2429,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     setOriginalQuotationNumber('');
     setHasLoadedQuotation(false);
     setLoadedItemKeys(new Set());
+    setManualTimepointsByItemKey(new Map());
+    setItemInstanceIds(new Map());
 
     // Reset manual edits
     setManuallyEditedQuantities(new Map());
@@ -2437,6 +2443,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     manuallyEditedPricesRef.current = new Map();
     manuallyEditedServiceNamesRef.current = new Map();
     manuallyEditedItemsRef.current = new Set();
+    loadedItemKeysRef.current = new Set();
+    manualTimepointsByItemKeyRef.current = new Map();
   };
 
   const toggleLanguage = (lang: string) => {
