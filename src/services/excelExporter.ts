@@ -16,7 +16,7 @@ export function generateExcelFromQuotation({ quotation, items }: ExcelExportData
     [''],
     ['Devis', quotation.quotation_number || ''],
     ['Date', quotation.quotation_date || ''],
-    ['Étude', quotation.study_name || ''],
+    ['Étude', quotation.study_title || ''],
     ['Client', quotation.customer_name || ''],
     ['Société', quotation.customer_company || ''],
     ['Adresse', quotation.customer_address || ''],
