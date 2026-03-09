@@ -83,6 +83,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
   const [isLoadingQuotation, setIsLoadingQuotation] = useState(false);
   const [hasLoadedQuotation, setHasLoadedQuotation] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<Set<string>>(new Set(['FR']));
+  const [customItemOrder, setCustomItemOrder] = useState<string[]>([]);
   const studyDesignRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef(items);
   const manuallyEditedQuantitiesRef = useRef<Map<string, number>>(new Map());
@@ -1366,10 +1367,34 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     newItems.forEach((item, idx) => {
       console.log(`  [${idx}] ${item.description}: unit_price=${item.unit_price}, qty=${item.quantity}, total=${item.total}`);
     });
-    setItems(newItems);
+
+    // Apply custom order if it exists
+    if (customItemOrder.length > 0) {
+      const orderedItems = [...newItems];
+      orderedItems.sort((a, b) => {
+        const aKey = getItemKey(a, newItems.indexOf(a));
+        const bKey = getItemKey(b, newItems.indexOf(b));
+        const aIndex = customItemOrder.indexOf(aKey);
+        const bIndex = customItemOrder.indexOf(bKey);
+
+        // Items in customItemOrder come first, in their specified order
+        if (aIndex !== -1 && bIndex !== -1) {
+          return aIndex - bIndex;
+        }
+        // Items in customItemOrder come before items not in it
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        // Items not in customItemOrder keep their relative order
+        return 0;
+      });
+      setItems(orderedItems);
+    } else {
+      setItems(newItems);
+    }
+
     setItemInstanceIds(newItemInstanceIds);
     setMandatoryServices(mandatoryServiceIds);
-  }, [studyDesign, objectives, services, vatRate, numberOfConditions, manualTimepointsByItemKey, loadedItemKeys, removedMandatoryServices]);
+  }, [studyDesign, objectives, services, vatRate, numberOfConditions, manualTimepointsByItemKey, loadedItemKeys, removedMandatoryServices, customItemOrder]);
 
   // Wrapper function - now just passes through to setObjectives
   // We no longer reset hasLoadedQuotation because loadedItemKeys tracks which items to preserve
@@ -1808,6 +1833,10 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       ...item,
       order_index: index,
     }));
+
+    // Save the custom order by storing the item keys in order
+    const newCustomOrder = itemsWithOrderIndex.map((item, index) => getItemKey(item, index));
+    setCustomItemOrder(newCustomOrder);
 
     setItems(itemsWithOrderIndex);
 
