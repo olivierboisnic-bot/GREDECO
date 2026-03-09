@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Download, FileSpreadsheet } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 import { Quotation, QuotationItem } from '../lib/supabase';
 import GredecoLogo from './GredecoLogo';
 import { generateQuotationPDF } from '../services/pdfGenerator';
@@ -76,24 +76,18 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
     };
   }, [quotation]);
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadBoth = async () => {
     try {
+      // Generate and download PDF
       const pdf = await generateQuotationPDF(quotation, items);
       pdf.save(generateFilename());
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      alert(`Erreur lors de la génération du PDF: ${errorMessage}`);
-    }
-  };
 
-  const handleDownloadExcel = () => {
-    try {
+      // Generate and download Excel
       downloadQuotationAsExcel(quotation, items);
     } catch (error) {
-      console.error('Error generating Excel:', error);
+      console.error('Error generating files:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      alert(`Erreur lors de la génération du fichier Excel: ${errorMessage}`);
+      alert(`Erreur lors de la génération des fichiers: ${errorMessage}`);
     }
   };
 
@@ -195,18 +189,11 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
           <h2 className="text-xl font-semibold text-gray-900">Quotation Preview</h2>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleDownloadPDF}
+              onClick={handleDownloadBoth}
               className="download-button flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Download size={18} />
-              Télécharger PDF
-            </button>
-            <button
-              onClick={handleDownloadExcel}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <FileSpreadsheet size={18} />
-              Télécharger Excel
+              Exporter (PDF + Excel)
             </button>
             <button
               onClick={onClose}
