@@ -650,6 +650,9 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     }
 
     // Add the item row
+    // Use service_name if available, otherwise fallback to description
+    let cleanDesc = (item.service_name || item.description || '').trim();
+
     // Clean up description only if service_name is not present
     if (!item.service_name && item.description) {
       cleanDesc = cleanDesc.replace(/\s*\(Objective:.*?\)/g, '').replace(/\s*\(Objectif:.*?\)/g, '');
