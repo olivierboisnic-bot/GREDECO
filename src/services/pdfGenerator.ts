@@ -316,7 +316,11 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(100, 100, 100);
-  pdf.text(t.study, rightBoxX + 3, yPos + 6);
+  // Center the "Étude:" label horizontally
+  const labelText = t.study;
+  const labelWidth = pdf.getTextWidth(labelText);
+  const labelX = rightBoxX + (rightBoxWidth - labelWidth) / 2;
+  pdf.text(labelText, labelX, yPos + 6);
 
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(11);
@@ -326,10 +330,9 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     const titleMaxWidth = rightBoxWidth - 6;
     const titleLines = wrapText(pdf, quotation.study_title.toUpperCase(), titleMaxWidth);
 
-    // Calculate vertical centering
+    // Start title below the "Étude:" label with proper spacing
     const lineSpacing = 4.5;
-    const totalTextHeight = titleLines.length * lineSpacing;
-    const startY = yPos + (boxHeight - totalTextHeight) / 2 + 3;
+    const startY = yPos + 12; // Start after label (yPos + 6) + spacing
 
     let titleYPos = startY;
     titleLines.forEach((line) => {
@@ -340,12 +343,11 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       titleYPos += lineSpacing;
     });
   } else {
-    // If no study title, show placeholder centered
+    // If no study title, show placeholder centered below label
     const placeholderText = 'ÉTUDE';
     const textWidth = pdf.getTextWidth(placeholderText);
     const centerX = rightBoxX + (rightBoxWidth - textWidth) / 2;
-    const centerY = yPos + boxHeight / 2;
-    pdf.text(placeholderText, centerX, centerY);
+    pdf.text(placeholderText, centerX, yPos + 14);
   }
 
   // Reset text color
