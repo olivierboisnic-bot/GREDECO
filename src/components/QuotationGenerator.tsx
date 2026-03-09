@@ -1358,13 +1358,10 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     });
 
     console.log('Setting items:', newItems.length, newItems);
-    console.log('🔍 First 3 items prices:', newItems.slice(0, 3).map(item => ({
-      service_id: item.service_id,
-      service_name: item.service_name,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      amount_without_tax: item.amount_without_tax
-    })));
+    console.log('🔍 ALL ITEMS PRICES:');
+    newItems.forEach((item, idx) => {
+      console.log(`  [${idx}] ${item.description}: unit_price=${item.unit_price}, qty=${item.quantity}, total=${item.total}`);
+    });
     setItems(newItems);
     setItemInstanceIds(newItemInstanceIds);
     setMandatoryServices(mandatoryServiceIds);
