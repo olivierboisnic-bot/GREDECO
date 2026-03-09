@@ -16,19 +16,17 @@ export const LoginPage: React.FC = () => {
   const [resetEmail, setResetEmail] = useState('');
 
   useEffect(() => {
+    // SECURITY: Ne plus stocker le mot de passe pour des raisons de sécurité
+    // On ne garde que l'email pour faciliter la reconnexion
     const savedEmail = localStorage.getItem('gredeco_saved_email');
-    const savedPassword = localStorage.getItem('gredeco_saved_password');
     const savedRemember = localStorage.getItem('gredeco_remember_me');
+
+    // Nettoyer les anciens mots de passe stockés
+    localStorage.removeItem('gredeco_saved_password');
+
     if (savedEmail && savedRemember === 'true') {
       setEmail(savedEmail);
       setRememberMe(true);
-      if (savedPassword) {
-        try {
-          setPassword(atob(savedPassword));
-        } catch (e) {
-          console.error('Failed to decode password');
-        }
-      }
     }
   }, []);
 
@@ -102,8 +100,8 @@ export const LoginPage: React.FC = () => {
           setSuccessMessage('Compte créé avec succès ! Vous êtes maintenant connecté.');
           if (rememberMe) {
             localStorage.setItem('gredeco_saved_email', email);
-            localStorage.setItem('gredeco_saved_password', btoa(password));
             localStorage.setItem('gredeco_remember_me', 'true');
+            // SECURITY: Ne jamais stocker le mot de passe
           }
         }
       } else {
@@ -121,13 +119,14 @@ export const LoginPage: React.FC = () => {
         } else {
           if (rememberMe) {
             localStorage.setItem('gredeco_saved_email', email);
-            localStorage.setItem('gredeco_saved_password', btoa(password));
             localStorage.setItem('gredeco_remember_me', 'true');
+            // SECURITY: Ne jamais stocker le mot de passe
           } else {
             localStorage.removeItem('gredeco_saved_email');
-            localStorage.removeItem('gredeco_saved_password');
             localStorage.removeItem('gredeco_remember_me');
           }
+          // Toujours s'assurer qu'il n'y a pas de mot de passe stocké
+          localStorage.removeItem('gredeco_saved_password');
         }
       }
     } catch (err) {
