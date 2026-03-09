@@ -2478,6 +2478,11 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         language: importedData.quotationInfo.language,
       });
 
+      // Warn if study title is missing
+      if (!importedData.quotationInfo.studyTitle || importedData.quotationInfo.studyTitle.trim() === '') {
+        showNotification('⚠️ Le titre de l\'étude est manquant dans le fichier Excel. Veuillez le saisir manuellement.', 'warning');
+      }
+
       setQuotationInfo({
         quotationNumber: importedData.quotationInfo.quotationNumber,
         studyTitle: importedData.quotationInfo.studyTitle,
