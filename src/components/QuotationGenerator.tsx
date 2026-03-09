@@ -2472,6 +2472,12 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     try {
       const importedData = await importQuotationFromExcel(file);
 
+      console.log('📥 Imported Excel data:', {
+        studyTitle: importedData.quotationInfo.studyTitle,
+        quotationNumber: importedData.quotationInfo.quotationNumber,
+        language: importedData.quotationInfo.language,
+      });
+
       setQuotationInfo({
         quotationNumber: importedData.quotationInfo.quotationNumber,
         studyTitle: importedData.quotationInfo.studyTitle,
@@ -2634,6 +2640,9 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
 
       importedItems.forEach((item) => {
         if (item.service_id) {
+          // Check if this is a real service ID (matched) vs imported
+          const isMatchedService = !item.service_id.startsWith('imported-');
+
           // For items with objectives, use the objective-based key
           if (item.objective_name) {
             const objective = importedObjectives.find(obj => obj.name === item.objective_name);
@@ -2646,7 +2655,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
                 objectiveName: objective.name,
                 quantity: item.quantity,
                 unitPrice: item.unit_price,
-                timepoints: objective.timepoints
+                timepoints: objective.timepoints,
+                isMatchedService
               });
               newManualQuantities.set(itemKey, item.quantity);
               newManualPrices.set(itemKey, item.unit_price);
@@ -2659,19 +2669,25 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
             const isMandatoryClinical = item.description?.includes('MANDATORY FOR CLINICAL TRIALS');
             const isMandatoryLab = item.description?.includes('MANDATORY FOR LABORATORY TRIALS');
 
-            let itemKey = item.service_id;
-            if (isMandatoryForAll) {
-              itemKey = `${item.service_id}_mandatory_all`;
-            } else if (isMandatoryClinical) {
-              itemKey = `${item.service_id}_mandatory_clinical`;
-            } else if (isMandatoryLab) {
-              itemKey = `${item.service_id}_mandatory_lab`;
-            }
+            // Only store prices/quantities for matched services (real UUIDs)
+            // Imported services (temporary IDs) won't have their prices preserved
+            if (isMatchedService) {
+              let itemKey = item.service_id;
+              if (isMandatoryForAll) {
+                itemKey = `${item.service_id}_mandatory_all`;
+              } else if (isMandatoryClinical) {
+                itemKey = `${item.service_id}_mandatory_clinical`;
+              } else if (isMandatoryLab) {
+                itemKey = `${item.service_id}_mandatory_lab`;
+              }
 
-            newManualQuantities.set(itemKey, item.quantity);
-            newManualPrices.set(itemKey, item.unit_price);
-            newLoadedItemKeys.add(itemKey);
-            console.log('Set manual quantity for mandatory item:', itemKey, 'qty:', item.quantity, 'price:', item.unit_price);
+              newManualQuantities.set(itemKey, item.quantity);
+              newManualPrices.set(itemKey, item.unit_price);
+              newLoadedItemKeys.add(itemKey);
+              console.log('✅ Set manual price/qty for matched mandatory service:', itemKey, 'qty:', item.quantity, 'price:', item.unit_price);
+            } else {
+              console.log('⚠️ Skipping price/qty storage for unmatched mandatory service:', item.description, 'serviceId:', item.service_id);
+            }
           }
         }
       });
