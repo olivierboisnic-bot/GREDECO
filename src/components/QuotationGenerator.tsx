@@ -2597,6 +2597,16 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         serviceInstances: obj.serviceInstances
       })));
 
+      // Debug: Log imported items to check prices
+      console.log('Imported items from Excel:', importedItems.map((item, idx) => ({
+        index: idx,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        objectiveName: item.objective_name,
+        serviceId: item.service_id
+      })));
+
       // Set up manual quantities, prices, and timepoints for matched services
       // Start fresh for imports - don't carry over old manual edits
       const newManualQuantities = new Map<string, number>();
@@ -2611,11 +2621,19 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
             const objective = importedObjectives.find(obj => obj.name === item.objective_name);
             if (objective) {
               const itemKey = `${item.service_id}_${objective.id}`;
+              console.log('🔍 Setting manual values for:', {
+                itemKey,
+                serviceId: item.service_id,
+                objectiveId: objective.id,
+                objectiveName: objective.name,
+                quantity: item.quantity,
+                unitPrice: item.unit_price,
+                timepoints: objective.timepoints
+              });
               newManualQuantities.set(itemKey, item.quantity);
               newManualPrices.set(itemKey, item.unit_price);
               newManualTimepoints.set(itemKey, objective.timepoints);
               newLoadedItemKeys.add(itemKey);
-              console.log('Set manual quantity for objective item:', itemKey, 'qty:', item.quantity, 'price:', item.unit_price, 'timepoints:', objective.timepoints);
             }
           } else {
             // For mandatory services, use the service-based key
