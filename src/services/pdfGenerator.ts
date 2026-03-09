@@ -528,14 +528,8 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     yPos = yPos + designHeight + 8;
   }
 
-  const { objectiveGroups, mandatoryItems } = groupItemsByObjective(items, quotation);
-
-  const tableData: any[] = [];
-  const imageData: { [key: number]: string } = {};
-
-  // Load all images first
-  const allItems = [...objectiveGroups.flatMap(g => g.items), ...mandatoryItems];
-  const imagePromises = allItems.map(async (item) => {
+  // Load all images first (in the order items are provided)
+  const imagePromises = items.map(async (item) => {
     if (item.image_url) {
       try {
         return await loadImageAsBase64(item.image_url);
@@ -554,169 +548,159 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   loadedImages.forEach((img, idx) => {
     console.log(`  Image ${idx}: loaded=${!!img}, length=${img ? img.length : 0}`);
   });
-  let imageIndex = 0;
 
-  // Add objectives first
-  objectiveGroups.forEach((group) => {
-    tableData.push([
-      {
-        content: `${t.objective} ${group.items[0]?.description?.match(/OBJECTIF\s+(\d+)/)?.[1] || ''}: ${group.name.toUpperCase()}`,
-        colSpan: 5,
-        styles: { fillColor: [220, 230, 250], fontStyle: 'bold', fontSize: 9 }
-      }
-    ]);
-
-    if (group.timepoints) {
-      tableData.push([
-        {
-          content: `${t.measurementTimeDuration} ${group.timepoints}`,
-          colSpan: 5,
-          styles: { fillColor: [240, 245, 255], fontStyle: 'italic', fontSize: 8 }
-        }
-      ]);
+  // Parse saved objectives data
+  let savedObjectives: Array<{ id: string, name: string, timepoints: string[] }> = [];
+  if (quotation.objectives_data) {
+    try {
+      savedObjectives = typeof quotation.objectives_data === 'string'
+        ? JSON.parse(quotation.objectives_data)
+        : quotation.objectives_data;
+    } catch (error) {
+      console.error('Failed to parse objectives_data:', error);
     }
+  }
 
-    group.items.forEach(item => {
-      // Use service_name if available, otherwise fallback to description
-      let cleanDesc = (item.service_name || item.description || '').trim();
-
-      // Clean up description only if service_name is not present
-      if (!item.service_name && item.description) {
-        cleanDesc = cleanDesc.replace(/\s*\(Objective:.*?\)/g, '').replace(/\s*\(Objectif:.*?\)/g, '');
-        cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR ALL STUDIES/gi, '');
-        cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR CLINICAL TRIALS/gi, '');
-        cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR LABORATORY TRIALS/gi, '');
-        cleanDesc = cleanDesc.replace(/\|\s*Claims:.*$/gi, '');
-        cleanDesc = cleanDesc.replace(/\(TVA:\s*[\d.]+\)/gi, '');
-        cleanDesc = cleanDesc.trim();
-      }
-
-      // Normalize text for better PDF rendering and fix common issues
-      cleanDesc = cleanDesc.normalize('NFC');
-      // Fix double "de" (e.g., "Test de d'homogénéité" -> "Test d'homogénéité")
-      cleanDesc = cleanDesc.replace(/\bde\s+d'/gi, "d'");
-      // Remove any zero-width spaces, invisible characters, and extra whitespace
-      cleanDesc = cleanDesc.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '');
-      // Replace multiple spaces with single space
-      cleanDesc = cleanDesc.replace(/\s+/g, ' ').trim();
-
-      const globalDiscount = quotation.global_discount_percent || 0;
-      const totalDiscount = (item.discount_percent || 0) + globalDiscount;
-
-      if (totalDiscount > 0) {
-        cleanDesc += ` (Remise: ${totalDiscount}%`;
-        if (item.discount_percent > 0 && globalDiscount > 0) {
-          cleanDesc += ` = ${item.discount_percent}% + ${globalDiscount}% globale`;
-        }
-        cleanDesc += ')';
-      }
-
-      const adjustedUnitPrice = (item.unit_price || 0) * (1 - totalDiscount / 100);
-      const adjustedAmountHT = adjustedUnitPrice * item.quantity;
-
-      const rowIndex = tableData.length;
-      const imgData = loadedImages[imageIndex];
-      console.log(`Objective item ${imageIndex}: rowIndex=${rowIndex}, hasImage=${!!imgData}, imageLength=${imgData?.length || 0}`);
-      if (imgData) {
-        imageData[rowIndex] = imgData;
-        console.log(`  → Mapped image to row ${rowIndex}`);
-      }
-      imageIndex++;
-
-      tableData.push([
-        cleanDesc,
-        item.quantity || '',
-        `${formatCurrency(adjustedUnitPrice)} €`,
-        `${formatCurrency(adjustedAmountHT)} €`,
-        `${item.vat_percent || 20}%`
-      ]);
-    });
+  const objectiveTimepointsMap = new Map<string, string[]>();
+  savedObjectives.forEach(obj => {
+    if (obj.name && obj.timepoints) {
+      objectiveTimepointsMap.set(obj.name, obj.timepoints);
+    }
   });
 
-  // Add mandatory items at the end
-  if (mandatoryItems.length > 0 || !items.some(item =>
-    (item.service_name || item.description || '').toLowerCase().includes('indemnisation')
-  )) {
-    // Add a separator header for mandatory services
-    tableData.push([
-      {
-        content: t.mandatoryServices,
-        colSpan: 5,
-        styles: { fillColor: [220, 230, 250], fontStyle: 'bold', fontSize: 9 }
+  const tableData: any[] = [];
+  const imageData: { [key: number]: string } = {};
+
+  let currentObjective: string | null = null;
+  let mandatoryHeaderAdded = false;
+
+  // Process items in the order they are provided (preserving custom order)
+  items.forEach((item, itemIndex) => {
+    const isMandatory = !item.objective_name ||
+        item.description?.includes('MANDATORY FOR ALL STUDIES') ||
+        item.description?.includes('MANDATORY FOR CLINICAL TRIALS');
+
+    const isRecruitmentObjective = item.objective_name?.toLowerCase().includes('recrutement') ||
+                                   item.objective_name?.toLowerCase().includes('recruitment') ||
+                                   item.objective_name?.toLowerCase().includes('panelist') ||
+                                   item.objective_name?.toLowerCase().includes('panéliste');
+
+    if (isMandatory || isRecruitmentObjective) {
+      // Add mandatory header if first mandatory item
+      if (!mandatoryHeaderAdded) {
+        if (currentObjective !== null) {
+          // Reset current objective when switching to mandatory section
+          currentObjective = null;
+        }
+
+        // Add separator header for mandatory services
+        tableData.push([
+          {
+            content: t.mandatoryServices,
+            colSpan: 5,
+            styles: { fillColor: [220, 230, 250], fontStyle: 'bold', fontSize: 9 }
+          }
+        ]);
+
+        // Check if Indemnisation is present in any items
+        const hasIndemnisation = items.some(i =>
+          (i.service_name || i.description || '').toLowerCase().includes('indemnisation')
+        );
+
+        // If Indemnisation is not present, add "Fournis par le client" row
+        if (!hasIndemnisation) {
+          tableData.push([
+            t.panelistsCompensationProvidedByClient,
+            '-',
+            '-',
+            '-',
+            '-'
+          ]);
+        }
+
+        mandatoryHeaderAdded = true;
       }
-    ]);
+    } else if (item.objective_name && item.objective_name !== currentObjective) {
+      // Add objective header
+      currentObjective = item.objective_name;
 
-    // Check if Indemnisation is present in any items (mandatory or not)
-    const hasIndemnisation = items.some(item =>
-      (item.service_name || item.description || '').toLowerCase().includes('indemnisation')
-    );
-
-    // If Indemnisation is not present, add "Fournis par le client" row
-    if (!hasIndemnisation) {
       tableData.push([
-        t.panelistsCompensationProvidedByClient,
-        '-',
-        '-',
-        '-',
-        '-'
+        {
+          content: `${t.objective} ${item.description?.match(/OBJECTIF\s+(\d+)/)?.[1] || ''}: ${item.objective_name.toUpperCase()}`,
+          colSpan: 5,
+          styles: { fillColor: [220, 230, 250], fontStyle: 'bold', fontSize: 9 }
+        }
       ]);
+
+      // Add timepoints row
+      const objectiveTimepoints = objectiveTimepointsMap.get(item.objective_name);
+      const timepointsDisplay = objectiveTimepoints && objectiveTimepoints.length > 0
+        ? sortTimepoints(objectiveTimepoints).join(', ')
+        : item.objective_timepoints || '';
+
+      if (timepointsDisplay) {
+        tableData.push([
+          {
+            content: `${t.measurementTimeDuration} ${timepointsDisplay}`,
+            colSpan: 5,
+            styles: { fillColor: [240, 245, 255], fontStyle: 'italic', fontSize: 8 }
+          }
+        ]);
+      }
     }
 
-    mandatoryItems.forEach(item => {
-      // Use service_name if available, otherwise fallback to description
-      let cleanDesc = (item.service_name || item.description || '').trim();
+    // Add the item row
+    // Clean up description only if service_name is not present
+    if (!item.service_name && item.description) {
+      cleanDesc = cleanDesc.replace(/\s*\(Objective:.*?\)/g, '').replace(/\s*\(Objectif:.*?\)/g, '');
+      cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR ALL STUDIES/gi, '');
+      cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR CLINICAL TRIALS/gi, '');
+      cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR LABORATORY TRIALS/gi, '');
+      cleanDesc = cleanDesc.replace(/\|\s*Claims:.*$/gi, '');
+      cleanDesc = cleanDesc.replace(/\(TVA:\s*[\d.]+\)/gi, '');
+      cleanDesc = cleanDesc.trim();
+    }
 
-      // Clean up description only if service_name is not present
-      if (!item.service_name && item.description) {
-        cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR ALL STUDIES/gi, '');
-        cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR CLINICAL TRIALS/gi, '');
-        cleanDesc = cleanDesc.replace(/\s*-?\s*MANDATORY FOR LABORATORY TRIALS/gi, '');
-        cleanDesc = cleanDesc.replace(/\|\s*Claims:.*$/gi, '');
-        cleanDesc = cleanDesc.replace(/\(TVA:\s*[\d.]+\)/gi, '');
-        cleanDesc = cleanDesc.trim();
+    // Normalize text for better PDF rendering and fix common issues
+    cleanDesc = cleanDesc.normalize('NFC');
+    // Fix double "de" (e.g., "Test de d'homogénéité" -> "Test d'homogénéité")
+    cleanDesc = cleanDesc.replace(/\bde\s+d'/gi, "d'");
+    // Remove any zero-width spaces, invisible characters, and extra whitespace
+    cleanDesc = cleanDesc.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '');
+    // Replace multiple spaces with single space
+    cleanDesc = cleanDesc.replace(/\s+/g, ' ').trim();
+
+    const globalDiscount = quotation.global_discount_percent || 0;
+    const totalDiscount = (item.discount_percent || 0) + globalDiscount;
+
+    if (totalDiscount > 0) {
+      cleanDesc += ` (Remise: ${totalDiscount}%`;
+      if (item.discount_percent > 0 && globalDiscount > 0) {
+        cleanDesc += ` = ${item.discount_percent}% + ${globalDiscount}% globale`;
       }
+      cleanDesc += ')';
+    }
 
-      // Normalize text for better PDF rendering and fix common issues
-      cleanDesc = cleanDesc.normalize('NFC');
-      // Fix double "de" (e.g., "Test de d'homogénéité" -> "Test d'homogénéité")
-      cleanDesc = cleanDesc.replace(/\bde\s+d'/gi, "d'");
-      // Remove any zero-width spaces, invisible characters, and extra whitespace
-      cleanDesc = cleanDesc.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '');
-      // Replace multiple spaces with single space
-      cleanDesc = cleanDesc.replace(/\s+/g, ' ').trim();
+    const adjustedUnitPrice = (item.unit_price || 0) * (1 - totalDiscount / 100);
+    const adjustedAmountHT = adjustedUnitPrice * item.quantity;
 
-      const globalDiscount = quotation.global_discount_percent || 0;
-      const totalDiscount = (item.discount_percent || 0) + globalDiscount;
+    const rowIndex = tableData.length;
+    const imgData = loadedImages[itemIndex];
+    console.log(`Item ${itemIndex}: rowIndex=${rowIndex}, hasImage=${!!imgData}, imageLength=${imgData?.length || 0}`);
+    if (imgData) {
+      imageData[rowIndex] = imgData;
+      console.log(`  → Mapped image to row ${rowIndex}`);
+    }
 
-      if (totalDiscount > 0) {
-        cleanDesc += ` (Remise: ${totalDiscount}%`;
-        if (item.discount_percent > 0 && globalDiscount > 0) {
-          cleanDesc += ` = ${item.discount_percent}% + ${globalDiscount}% globale`;
-        }
-        cleanDesc += ')';
-      }
+    tableData.push([
+      cleanDesc,
+      item.quantity || '',
+      `${formatCurrency(adjustedUnitPrice)} €`,
+      `${formatCurrency(adjustedAmountHT)} €`,
+      `${item.vat_percent || 20}%`
+    ]);
+  });
 
-      const adjustedUnitPrice = (item.unit_price || 0) * (1 - totalDiscount / 100);
-      const adjustedAmountHT = adjustedUnitPrice * item.quantity;
-
-      const rowIndex = tableData.length;
-      const imgData = loadedImages[imageIndex];
-      console.log(`Mandatory item ${imageIndex}: rowIndex=${rowIndex}, hasImage=${!!imgData}, imageLength=${imgData?.length || 0}`);
-      if (imgData) {
-        imageData[rowIndex] = imgData;
-        console.log(`  → Mapped image to row ${rowIndex}`);
-      }
-      imageIndex++;
-
-      tableData.push([
-        cleanDesc,
-        item.quantity || '',
-        `${formatCurrency(adjustedUnitPrice)} €`,
-        `${formatCurrency(adjustedAmountHT)} €`,
-        `${item.vat_percent || 20}%`
-      ]);
-    });
-  }
 
   console.log('=== FINAL IMAGE MAPPING ===');
   console.log('ImageData keys:', Object.keys(imageData));
