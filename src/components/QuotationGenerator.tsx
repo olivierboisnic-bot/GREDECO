@@ -2363,22 +2363,27 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       quotationData = data;
     }
 
-    const quotationItems = items.map((item, index) => ({
-      quotation_id: quotationData.id,
-      service_id: item.service_id || null,
-      service_name: item.service_name || 'Service sans nom',
-      description: item.description || '',
-      image_url: item.image_url || null,
-      quantity: item.quantity || 1,
-      unit_price: item.unit_price || 0,
-      discount_percent: item.discount_percent || 0,
-      vat_percent: item.vat_percent || vatRate,
-      amount_without_tax: item.amount_without_tax || 0,
-      subtotal: item.subtotal || 0,
-      objective_name: item.objective_name || null,
-      objective_timepoints: itemTimepoints[index] ? itemTimepoints[index].join(', ') : item.objective_timepoints || null,
-      order_index: item.order_index !== undefined ? item.order_index : index,
-    }));
+    const quotationItems = items.map((item, index) => {
+      // Check if service_id is an imported service (temporary ID) or a real UUID
+      const isImportedService = item.service_id && item.service_id.startsWith('imported-');
+
+      return {
+        quotation_id: quotationData.id,
+        service_id: isImportedService ? null : (item.service_id || null),
+        service_name: item.service_name || 'Service sans nom',
+        description: item.description || '',
+        image_url: item.image_url || null,
+        quantity: item.quantity || 1,
+        unit_price: item.unit_price || 0,
+        discount_percent: item.discount_percent || 0,
+        vat_percent: item.vat_percent || vatRate,
+        amount_without_tax: item.amount_without_tax || 0,
+        subtotal: item.subtotal || 0,
+        objective_name: item.objective_name || null,
+        objective_timepoints: itemTimepoints[index] ? itemTimepoints[index].join(', ') : item.objective_timepoints || null,
+        order_index: item.order_index !== undefined ? item.order_index : index,
+      };
+    });
 
     const { error: itemsError } = await supabase
       .from('quotation_items')
@@ -2397,7 +2402,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
         quotation_id: quotationData.id,
         name: obj.name,
         timepoints: obj.timepoints,
-        service_ids: obj.serviceIds,
+        // Filter out imported service IDs (temporary IDs that don't exist in database)
+        service_ids: obj.serviceIds.filter(id => !id.startsWith('imported-')),
       }));
 
       const { error: objectivesError } = await supabase
