@@ -1280,7 +1280,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
 
             // Get manual price and quantity for this specific instance
             const instanceManualPrice = manuallyEditedPricesRef.current.get(instanceItemKey);
-            const instanceUnitPrice = instanceManualPrice !== undefined ? instanceManualPrice : (service?.base_price || 0);
+            const instanceUnitPrice = instanceManualPrice !== undefined ? instanceManualPrice : unitPrice;
 
             const instanceManualQuantity = manuallyEditedQuantitiesRef.current.get(instanceItemKey);
             const instanceQuantity = instanceManualQuantity !== undefined ? instanceManualQuantity : quantity;
