@@ -253,9 +253,9 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
                     )}
                   </div>
                 </div>
-                <div className="bg-blue-50 p-4 rounded h-full flex flex-col justify-center items-center text-center">
+                <div className="bg-blue-50 p-4 rounded h-full flex flex-col justify-center items-center text-center overflow-hidden">
                   <p className="text-xs text-gray-600 mb-2">Étude:</p>
-                  <h2 className="text-sm font-bold text-blue-900 uppercase leading-tight">
+                  <h2 className="text-sm font-bold text-blue-900 uppercase leading-tight break-words w-full px-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', hyphens: 'auto' }}>
                     {quotation.study_title && quotation.study_title.trim() ? quotation.study_title.trim() : 'ÉTUDE'}
                   </h2>
                 </div>
