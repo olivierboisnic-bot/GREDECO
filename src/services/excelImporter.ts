@@ -154,12 +154,15 @@ export async function importQuotationFromExcel(file: File): Promise<ImportedQuot
               switch (label) {
                 case 'Devis':
                   result.quotationInfo.quotationNumber = value;
+                  console.log('📋 Import Excel - Devis:', value);
                   break;
                 case 'Date':
                   result.quotationInfo.quotationDate = value;
+                  console.log('📋 Import Excel - Date:', value);
                   break;
                 case 'Étude':
                   result.quotationInfo.studyTitle = value;
+                  console.log('📋 Import Excel - Étude (Study Title):', value);
                   break;
                 case 'Client':
                   result.customerInfo.name = value;

@@ -2665,9 +2665,24 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
             }
           } else {
             // For mandatory services, use the service-based key
-            const isMandatoryForAll = item.description?.includes('MANDATORY FOR ALL STUDIES');
-            const isMandatoryClinical = item.description?.includes('MANDATORY FOR CLINICAL TRIALS');
-            const isMandatoryLab = item.description?.includes('MANDATORY FOR LABORATORY TRIALS');
+            // Check both description AND the actual service type from database
+            let isMandatoryForAll = item.description?.includes('MANDATORY FOR ALL STUDIES');
+            let isMandatoryClinical = item.description?.includes('MANDATORY FOR CLINICAL TRIALS');
+            let isMandatoryLab = item.description?.includes('MANDATORY FOR LABORATORY TRIALS');
+
+            // If matched service, also check its type from the database
+            if (isMatchedService) {
+              const matchedService = services.find(s => s.id === item.service_id);
+              if (matchedService) {
+                if (matchedService.type === 'mandatory_all') {
+                  isMandatoryForAll = true;
+                } else if (matchedService.type === 'mandatory_clinical') {
+                  isMandatoryClinical = true;
+                } else if (matchedService.type === 'mandatory_lab') {
+                  isMandatoryLab = true;
+                }
+              }
+            }
 
             // Only store prices/quantities for matched services (real UUIDs)
             // Imported services (temporary IDs) won't have their prices preserved
