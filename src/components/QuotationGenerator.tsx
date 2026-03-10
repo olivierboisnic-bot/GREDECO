@@ -3658,13 +3658,27 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
               onReorderItems={reorderItems}
               instanceCustomNames={instanceCustomNames}
               onUpdateInstanceCustomName={(instanceId, customName) => {
+                // Update the instanceCustomNames map
                 setInstanceCustomNames(prev => {
                   const newMap = new Map(prev);
                   newMap.set(instanceId, customName);
                   return newMap;
                 });
 
-                // Also update the service_name in the items array
+                // Update the customName in the objectives (this persists the change)
+                setObjectives(prevObjectives => {
+                  return prevObjectives.map(obj => {
+                    const updatedInstances = (obj.serviceInstances || []).map(inst => {
+                      if (inst.instanceId === instanceId) {
+                        return { ...inst, customName: customName || undefined };
+                      }
+                      return inst;
+                    });
+                    return { ...obj, serviceInstances: updatedInstances };
+                  });
+                });
+
+                // Also update the service_name in the items array if it exists
                 const itemIndex = Array.from(itemInstanceIds.entries()).find(([_, id]) => id === instanceId)?.[0];
                 if (itemIndex !== undefined) {
                   updateItem(itemIndex, 'service_name', customName);

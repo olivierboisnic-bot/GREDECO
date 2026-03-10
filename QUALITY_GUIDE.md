@@ -60,6 +60,65 @@ import { Pen as Edit2 } from 'lucide-react';
 
 ---
 
+### ✅ Mars 2026 - Correction Bug Modification Description Service
+
+#### Bug: Champ "Nom personnalisé" non modifiable
+**Date**: 10 mars 2026
+**Fichier modifié**: `src/components/QuotationGenerator.tsx` (lignes 3660-3686)
+
+**Problème**:
+Les utilisateurs ne pouvaient pas modifier manuellement la description d'un service dans le champ "Nom personnalisé" lors de la création d'un devis. La saisie ne fonctionnait pas.
+
+**Cause**:
+La fonction `onUpdateInstanceCustomName` mettait à jour uniquement la Map `instanceCustomNames` mais ne persistait pas le changement dans les objectifs (`objectives.serviceInstances`). Lors de la régénération des items, le customName n'était pas disponible car il n'était pas stocké dans la structure de données des objectifs.
+
+**Solution**:
+Ajout de la mise à jour de l'objectif lors du changement du nom personnalisé:
+
+```typescript
+onUpdateInstanceCustomName={(instanceId, customName) => {
+  // 1. Update instanceCustomNames map
+  setInstanceCustomNames(prev => {
+    const newMap = new Map(prev);
+    newMap.set(instanceId, customName);
+    return newMap;
+  });
+
+  // 2. Update customName in objectives (persists the change)
+  setObjectives(prevObjectives => {
+    return prevObjectives.map(obj => {
+      const updatedInstances = (obj.serviceInstances || []).map(inst => {
+        if (inst.instanceId === instanceId) {
+          return { ...inst, customName: customName || undefined };
+        }
+        return inst;
+      });
+      return { ...obj, serviceInstances: updatedInstances };
+    });
+  });
+
+  // 3. Update service_name in items array if exists
+  const itemIndex = Array.from(itemInstanceIds.entries()).find(([_, id]) => id === instanceId)?.[0];
+  if (itemIndex !== undefined) {
+    updateItem(itemIndex, 'service_name', customName);
+  }
+}}
+```
+
+**Impact**:
+- ✅ Les utilisateurs peuvent maintenant modifier librement le nom des services
+- ✅ Les modifications sont persistées lors de la sauvegarde du devis
+- ✅ Aucun impact sur l'import Excel (fonctionnalité préservée)
+- ✅ Synchronisation correcte entre objectives et items
+
+**Tests effectués**:
+- ✓ Modification du nom personnalisé fonctionne
+- ✓ Import Excel continue de fonctionner correctement
+- ✓ Sauvegarde et rechargement du devis conserve le nom personnalisé
+- ✓ Build réussit sans erreurs
+
+---
+
 ## Architecture de l'Application
 
 ### Structure des Dossiers
