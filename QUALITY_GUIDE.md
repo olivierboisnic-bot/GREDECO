@@ -119,6 +119,85 @@ onUpdateInstanceCustomName={(instanceId, customName) => {
 
 ---
 
+### ✅ Mars 2026 - Améliorations UX et Performance
+
+#### Amélioration #1: Nettoyage des Logs de Debug
+**Date**: 10 mars 2026
+**Fichier modifié**: `src/services/pdfGenerator.ts` (lignes 547-552)
+
+**Problème**:
+Des logs de debug étaient présents en production, polluant la console du navigateur et impactant légèrement les performances.
+
+```typescript
+// Code supprimé:
+console.log('=== IMAGE LOADING DEBUG (v3) ===');
+console.log('Total items with images:', imagePromises.length);
+console.log('Loaded images count:', loadedImages.filter(img => img).length, 'out of', loadedImages.length);
+loadedImages.forEach((img, idx) => {
+  console.log(`  Image ${idx}: loaded=${!!img}, length=${img ? img.length : 0}`);
+});
+```
+
+**Impact**:
+- ✅ Console plus propre en production
+- ✅ Légère amélioration de la performance lors de la génération PDF
+- ✅ Meilleure expérience développeur lors du debugging
+
+---
+
+#### Amélioration #2: UX du Champ "Nom Personnalisé"
+**Date**: 10 mars 2026
+**Fichier modifié**: `src/components/ObjectiveManager.tsx` (lignes 748-777)
+
+**Problème**:
+Le champ "Nom personnalisé" avait un placeholder très long qui rendait l'interface confuse. Pas de moyen facile de revenir au nom par défaut.
+
+**Avant**:
+```typescript
+<input
+  placeholder={`Nom personnalisé (défaut: ${service.name})`}
+  value={instanceCustomNames.get(instance.instanceId) || ''}
+/>
+```
+
+**Après**:
+```typescript
+<div className="relative">
+  <input
+    placeholder="Nom personnalisé (optionnel)"
+    value={instanceCustomNames.get(instance.instanceId) || ''}
+    maxLength={200}
+    className="pr-8" // Space for reset button
+  />
+  {instanceCustomNames.get(instance.instanceId) && (
+    <button
+      onClick={() => onUpdateInstanceCustomName(instance.instanceId, '')}
+      title="Réinitialiser au nom par défaut"
+    >
+      <X size={14} />
+    </button>
+  )}
+</div>
+<div className="text-xs text-gray-500">
+  Par défaut: {service.name}
+</div>
+```
+
+**Améliorations apportées**:
+- ✅ Placeholder plus court et clair
+- ✅ Nom par défaut affiché séparément sous le champ
+- ✅ Bouton "X" pour réinitialiser rapidement
+- ✅ Limite de 200 caractères ajoutée
+- ✅ Meilleure hiérarchie visuelle
+
+**Impact UX**:
+- Interface plus claire et professionnelle
+- Feedback visuel immédiat sur le nom par défaut
+- Action de réinitialisation intuitive
+- Prévention des noms trop longs
+
+---
+
 ## Architecture de l'Application
 
 ### Structure des Dossiers

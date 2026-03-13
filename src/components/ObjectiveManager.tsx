@@ -747,13 +747,29 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
                           </div>
                           {!isImportedService && (
                             <>
-                              <input
-                                type="text"
-                                placeholder={`Nom personnalisé (défaut: ${service.name})`}
-                                value={instanceCustomNames.get(instance.instanceId) || ''}
-                                onChange={(e) => onUpdateInstanceCustomName(instance.instanceId, e.target.value)}
-                                className="mt-1 w-full text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                              />
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  placeholder="Nom personnalisé (optionnel)"
+                                  value={instanceCustomNames.get(instance.instanceId) || ''}
+                                  onChange={(e) => onUpdateInstanceCustomName(instance.instanceId, e.target.value)}
+                                  className="mt-1 w-full text-xs px-2 py-1 pr-8 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                                  maxLength={200}
+                                />
+                                {instanceCustomNames.get(instance.instanceId) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onUpdateInstanceCustomName(instance.instanceId, '')}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 mt-0.5 text-gray-400 hover:text-gray-600"
+                                    title="Réinitialiser au nom par défaut"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                )}
+                              </div>
+                              <div className="mt-0.5 text-xs text-gray-500">
+                                Par défaut: {service.name}
+                              </div>
                               <div className="mt-2 text-xs font-medium text-gray-700">
                                 {formatCurrency(service.base_price)} € HT par {service.unit || 'unit'}
                               </div>

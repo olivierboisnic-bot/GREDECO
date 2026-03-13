@@ -544,12 +544,6 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   });
 
   const loadedImages = await Promise.all(imagePromises);
-  console.log('=== IMAGE LOADING DEBUG (v3) ===');
-  console.log('Total items with images:', imagePromises.length);
-  console.log('Loaded images count:', loadedImages.filter(img => img).length, 'out of', loadedImages.length);
-  loadedImages.forEach((img, idx) => {
-    console.log(`  Image ${idx}: loaded=${!!img}, length=${img ? img.length : 0}`);
-  });
 
   // Parse saved objectives data
   let savedObjectives: Array<{ id: string, name: string, timepoints: string[] }> = [];
