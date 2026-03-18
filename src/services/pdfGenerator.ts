@@ -240,7 +240,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   const margin = 15;
 
   const signatureImg = await loadImageAsBase64('/signature-sylvie.jpg');
-  const logoImg = await loadImageAsBase64('/logo%20copy.png');
+  const logoImg = await loadImageAsBase64('/logo.png');
 
   let yPos = margin;
 

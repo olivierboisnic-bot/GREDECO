@@ -68,7 +68,7 @@ export async function generateInvoicePDF(invoice: Invoice, quotation: Quotation)
   const margin = 20;
 
   const signatureImg = await loadImageAsBase64('/signature-sylvie.jpg');
-  const logoImg = await loadImageAsBase64('/logo%20copy.png');
+  const logoImg = await loadImageAsBase64('/logo.png');
 
   let yPos = margin;
 
