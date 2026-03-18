@@ -66,8 +66,7 @@ const wrapText = (pdf: jsPDF, text: string, maxWidth: number): string[] => {
 const loadImageAsBase64 = (url: string): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
-    // Note: crossOrigin removed as CloudFront doesn't provide CORS headers
-    // Images are public and can be loaded without CORS
+    img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas');
@@ -242,12 +241,18 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   const signatureImg = await loadImageAsBase64('/signature-sylvie.jpg');
   const logoImg = await loadImageAsBase64('/logo.png');
 
+  console.log('Logo loaded:', logoImg ? `Yes (${logoImg.length} bytes)` : 'No');
+  console.log('Signature loaded:', signatureImg ? `Yes (${signatureImg.length} bytes)` : 'No');
+
   let yPos = margin;
 
   if (logoImg) {
     const logoWidth = 25;
     const logoHeight = 25;
     pdf.addImage(logoImg, 'PNG', margin, yPos, logoWidth, logoHeight);
+    console.log('Logo added to PDF at position:', margin, yPos);
+  } else {
+    console.error('Logo image failed to load, skipping logo in PDF');
   }
 
   pdf.setFontSize(24);

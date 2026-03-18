@@ -54,7 +54,8 @@ const loadImageAsBase64 = (url: string): Promise<string> => {
         resolve('');
       }
     };
-    img.onerror = () => {
+    img.onerror = (error) => {
+      console.error('Failed to load image:', url, error);
       resolve('');
     };
     img.src = url;
