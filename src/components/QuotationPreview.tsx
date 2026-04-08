@@ -48,6 +48,8 @@ const sortTimepoints = (timepoints: string[]): string[] => {
 };
 
 export default function QuotationPreview({ quotation, items, onClose }: QuotationPreviewProps) {
+  const [isExporting, setIsExporting] = React.useState(false);
+
   const generateFilename = () => {
     const quotationNumber = quotation.quotation_number || 'devis';
     const companyName = quotation.customer_company?.trim()?.replace(/[^a-z0-9]/gi, '_').replace(/__+/g, '_') || 'client';
@@ -78,6 +80,7 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
 
   const handleDownloadBoth = async () => {
     console.log('=== handleDownloadBoth called ===');
+    setIsExporting(true);
     try {
       console.log('Starting PDF generation...');
       console.log('Quotation:', quotation);
@@ -93,13 +96,15 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
       await downloadQuotationAsExcel(quotation, items);
       console.log('Excel generated successfully');
 
-      alert('Fichiers générés avec succès!');
+      alert('Fichiers générés avec succès! Vérifiez votre dossier de téléchargements.');
     } catch (error) {
       console.error('=== Error generating files ===');
       console.error('Error details:', error);
       console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       alert(`Erreur lors de la génération des fichiers: ${errorMessage}`);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -202,10 +207,20 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
           <div className="flex items-center gap-2">
             <button
               onClick={handleDownloadBoth}
-              className="download-button flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={isExporting}
+              className="download-button flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              <Download size={18} />
-              Exporter (PDF + Excel)
+              {isExporting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Génération en cours...
+                </>
+              ) : (
+                <>
+                  <Download size={18} />
+                  Exporter (PDF + Excel)
+                </>
+              )}
             </button>
             <button
               onClick={onClose}
