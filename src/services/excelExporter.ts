@@ -140,8 +140,30 @@ export function generateExcelFromQuotation({ quotation, items }: ExcelExportData
   const filename = `${quotation.quotation_number || 'devis'}_${quotation.customer_company || 'client'}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
   console.log('About to write Excel file with filename:', filename);
-  // Save file
-  XLSX.writeFile(workbook, filename);
+
+  // Generate Excel file as binary array buffer
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+  // Create a Blob from the buffer
+  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+  // Create download link and trigger download
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+
+  // Append to body, click, and cleanup
+  document.body.appendChild(link);
+  link.click();
+
+  // Cleanup
+  setTimeout(() => {
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }, 100);
+
   console.log('Excel file write completed');
 }
 
