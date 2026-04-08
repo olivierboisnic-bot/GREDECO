@@ -238,11 +238,22 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 15;
 
-  const signatureImg = await loadImageAsBase64('/signature-sylvie.jpg');
-  const logoImg = await loadImageAsBase64('/logo.png');
+  let signatureImg = '';
+  let logoImg = '';
 
-  console.log('Logo loaded:', logoImg ? `Yes (${logoImg.length} bytes)` : 'No');
-  console.log('Signature loaded:', signatureImg ? `Yes (${signatureImg.length} bytes)` : 'No');
+  try {
+    signatureImg = await loadImageAsBase64('/signature-sylvie.jpg');
+    console.log('Signature loaded:', signatureImg ? `Yes (${signatureImg.length} bytes)` : 'No');
+  } catch (error) {
+    console.error('Failed to load signature image:', error);
+  }
+
+  try {
+    logoImg = await loadImageAsBase64('/logo.png');
+    console.log('Logo loaded:', logoImg ? `Yes (${logoImg.length} bytes)` : 'No');
+  } catch (error) {
+    console.error('Failed to load logo image:', error);
+  }
 
   let yPos = margin;
 
@@ -539,16 +550,26 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   const imagePromises = items.map(async (item) => {
     if (item.image_url) {
       try {
-        return await loadImageAsBase64(item.image_url);
+        const imageData = await loadImageAsBase64(item.image_url);
+        return imageData;
       } catch (error) {
         console.error('Failed to load image:', item.image_url, error);
+        // Don't fail the entire PDF generation if one image fails
         return '';
       }
     }
     return '';
   });
 
-  const loadedImages = await Promise.all(imagePromises);
+  let loadedImages: string[] = [];
+  try {
+    loadedImages = await Promise.all(imagePromises);
+    console.log('All images loaded successfully:', loadedImages.filter(img => img).length, 'images');
+  } catch (error) {
+    console.error('Error loading images, continuing without images:', error);
+    // Continue with empty images array if loading fails
+    loadedImages = items.map(() => '');
+  }
 
   // Parse saved objectives data
   let savedObjectives: Array<{ id: string, name: string, timepoints: string[] }> = [];
