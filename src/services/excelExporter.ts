@@ -140,9 +140,34 @@ export function generateExcelFromQuotation({ quotation, items }: ExcelExportData
   const filename = `${quotation.quotation_number || 'devis'}_${quotation.customer_company || 'client'}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
   console.log('About to write Excel file with filename:', filename);
-  // Save file
-  XLSX.writeFile(workbook, filename);
-  console.log('Excel file write completed');
+
+  try {
+    // Try using writeFile first (most compatible)
+    XLSX.writeFile(workbook, filename);
+    console.log('Excel file write completed using writeFile');
+  } catch (writeError) {
+    console.warn('writeFile failed, trying manual blob method:', writeError);
+
+    // Fallback to manual blob creation
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+
+    setTimeout(() => {
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+
+    console.log('Excel file write completed using blob method');
+  }
 }
 
 export function downloadQuotationAsExcel(quotation: Quotation, items: QuotationItem[]): void {
