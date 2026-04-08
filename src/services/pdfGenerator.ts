@@ -575,8 +575,31 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   let currentObjective: string | null = null;
   let mandatoryHeaderAdded = false;
 
-  // Process items in the order they are provided (preserving custom order)
+  // Separate items into objective items and mandatory items
+  const objectiveItems: any[] = [];
+  const mandatoryItems: any[] = [];
+
   items.forEach((item, itemIndex) => {
+    const isMandatory = !item.objective_name ||
+        item.description?.includes('MANDATORY FOR ALL STUDIES') ||
+        item.description?.includes('MANDATORY FOR CLINICAL TRIALS');
+
+    const isRecruitmentObjective = item.objective_name?.toLowerCase().includes('recrutement') ||
+                                   item.objective_name?.toLowerCase().includes('recruitment') ||
+                                   item.objective_name?.toLowerCase().includes('panelist') ||
+                                   item.objective_name?.toLowerCase().includes('panéliste');
+
+    if (isMandatory || isRecruitmentObjective) {
+      mandatoryItems.push({ item, itemIndex });
+    } else {
+      objectiveItems.push({ item, itemIndex });
+    }
+  });
+
+  // Process all objective items first, then mandatory items
+  const sortedItems = [...objectiveItems, ...mandatoryItems];
+
+  sortedItems.forEach(({ item, itemIndex }) => {
     const isMandatory = !item.objective_name ||
         item.description?.includes('MANDATORY FOR ALL STUDIES') ||
         item.description?.includes('MANDATORY FOR CLINICAL TRIALS');
