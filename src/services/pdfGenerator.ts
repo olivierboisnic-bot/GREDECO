@@ -66,7 +66,12 @@ const wrapText = (pdf: jsPDF, text: string, maxWidth: number): string[] => {
 const loadImageAsBase64 = (url: string): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+
+    // Only set crossOrigin for external URLs, not for local assets
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      img.crossOrigin = 'anonymous';
+    }
+
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas');
