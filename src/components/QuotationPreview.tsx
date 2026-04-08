@@ -78,12 +78,17 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
 
   const handleDownloadBoth = async () => {
     try {
+      console.log('Starting PDF generation...');
       // Generate and download PDF
       const pdf = await generateQuotationPDF(quotation, items);
       pdf.save(generateFilename());
+      console.log('PDF generated successfully');
 
+      console.log('Starting Excel generation...');
+      console.log('Items to export:', items);
       // Generate and download Excel
       downloadQuotationAsExcel(quotation, items);
+      console.log('Excel generated successfully');
     } catch (error) {
       console.error('Error generating files:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';

@@ -7,6 +7,10 @@ interface ExcelExportData {
 }
 
 export function generateExcelFromQuotation({ quotation, items }: ExcelExportData): void {
+  console.log('generateExcelFromQuotation starting...');
+  console.log('Quotation:', quotation);
+  console.log('Items count:', items?.length);
+
   const workbook = XLSX.utils.book_new();
 
   // Single sheet with all information
@@ -135,10 +139,19 @@ export function generateExcelFromQuotation({ quotation, items }: ExcelExportData
   // Generate filename
   const filename = `${quotation.quotation_number || 'devis'}_${quotation.customer_company || 'client'}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
+  console.log('About to write Excel file with filename:', filename);
   // Save file
   XLSX.writeFile(workbook, filename);
+  console.log('Excel file write completed');
 }
 
 export function downloadQuotationAsExcel(quotation: Quotation, items: QuotationItem[]): void {
-  generateExcelFromQuotation({ quotation, items });
+  try {
+    console.log('Excel export called with:', { quotation, items });
+    generateExcelFromQuotation({ quotation, items });
+    console.log('Excel file generated and download initiated');
+  } catch (error) {
+    console.error('Error in downloadQuotationAsExcel:', error);
+    throw error;
+  }
 }
