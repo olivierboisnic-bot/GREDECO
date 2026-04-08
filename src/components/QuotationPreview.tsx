@@ -77,20 +77,27 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
   }, [quotation]);
 
   const handleDownloadBoth = async () => {
+    console.log('=== handleDownloadBoth called ===');
     try {
       console.log('Starting PDF generation...');
+      console.log('Quotation:', quotation);
+      console.log('Items:', items);
+
       // Generate and download PDF
       const pdf = await generateQuotationPDF(quotation, items);
       pdf.save(generateFilename());
       console.log('PDF generated successfully');
 
       console.log('Starting Excel generation...');
-      console.log('Items to export:', items);
       // Generate and download Excel
-      downloadQuotationAsExcel(quotation, items);
+      await downloadQuotationAsExcel(quotation, items);
       console.log('Excel generated successfully');
+
+      alert('Fichiers générés avec succès!');
     } catch (error) {
-      console.error('Error generating files:', error);
+      console.error('=== Error generating files ===');
+      console.error('Error details:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       alert(`Erreur lors de la génération des fichiers: ${errorMessage}`);
     }

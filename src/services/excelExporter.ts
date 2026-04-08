@@ -170,13 +170,25 @@ export function generateExcelFromQuotation({ quotation, items }: ExcelExportData
   }
 }
 
-export function downloadQuotationAsExcel(quotation: Quotation, items: QuotationItem[]): void {
-  try {
-    console.log('Excel export called with:', { quotation, items });
-    generateExcelFromQuotation({ quotation, items });
-    console.log('Excel file generated and download initiated');
-  } catch (error) {
-    console.error('Error in downloadQuotationAsExcel:', error);
-    throw error;
-  }
+export function downloadQuotationAsExcel(quotation: Quotation, items: QuotationItem[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log('=== Excel Export Starting ===');
+      console.log('Excel export called with:', { quotation, items });
+
+      generateExcelFromQuotation({ quotation, items });
+
+      console.log('Excel file generated and download initiated');
+
+      // Give the browser time to process the download
+      setTimeout(() => {
+        console.log('=== Excel Export Complete ===');
+        resolve();
+      }, 500);
+    } catch (error) {
+      console.error('=== Excel Export Error ===');
+      console.error('Error in downloadQuotationAsExcel:', error);
+      reject(error);
+    }
+  });
 }
