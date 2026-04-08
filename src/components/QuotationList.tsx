@@ -86,7 +86,8 @@ export default function QuotationList({ onEditQuotation }: QuotationListProps) {
     const { data, error } = await supabase
       .from('quotation_items')
       .select('*')
-      .eq('quotation_id', quotationId);
+      .eq('quotation_id', quotationId)
+      .order('order_index', { ascending: true });
 
     if (error) {
       console.error('Error loading quotation items:', error);

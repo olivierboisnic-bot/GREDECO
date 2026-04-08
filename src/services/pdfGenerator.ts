@@ -576,6 +576,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   let mandatoryHeaderAdded = false;
 
   // Separate items into objective items and mandatory items
+  // We need to maintain the relative order within each category
   const objectiveItems: any[] = [];
   const mandatoryItems: any[] = [];
 
@@ -589,6 +590,13 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
                                    item.objective_name?.toLowerCase().includes('panelist') ||
                                    item.objective_name?.toLowerCase().includes('panéliste');
 
+    console.log(`Item ${itemIndex}: "${item.service_name || item.description?.substring(0, 50)}"`, {
+      objective_name: item.objective_name,
+      isMandatory,
+      isRecruitmentObjective
+    });
+
+    // Consider recruitment as part of mandatory services since it's usually last
     if (isMandatory || isRecruitmentObjective) {
       mandatoryItems.push({ item, itemIndex });
     } else {
@@ -596,8 +604,22 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     }
   });
 
-  // Process all objective items first, then mandatory items
+  // Process all objective items first (maintaining their order), then mandatory items
   const sortedItems = [...objectiveItems, ...mandatoryItems];
+
+  console.log('========================================');
+  console.log('PDF ITEM ORDERING SUMMARY');
+  console.log('========================================');
+  console.log('Total items:', items.length);
+  console.log('Objective items (will appear FIRST):', objectiveItems.length);
+  console.log('Mandatory items (will appear LAST):', mandatoryItems.length);
+  console.log('');
+  console.log('Order of items in PDF:');
+  sortedItems.forEach(({ item }, idx) => {
+    const type = !item.objective_name ? 'MANDATORY' : 'OBJECTIVE';
+    console.log(`  ${idx + 1}. [${type}] ${item.service_name || item.description?.substring(0, 40)}`);
+  });
+  console.log('========================================');
 
   sortedItems.forEach(({ item, itemIndex }) => {
     const isMandatory = !item.objective_name ||
