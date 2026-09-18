@@ -410,6 +410,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     const labelWidth = 65;
     const contentWidth = pageWidth - 2 * margin - labelWidth - 8;
     const padding = 5;
+    const exclusionCriteriaExtraSpace = 5;
 
     pdf.setFontSize(9);
 
@@ -443,7 +444,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     }
     if (quotation.exclusion_criteria) {
       const lines = pdf.splitTextToSize(quotation.exclusion_criteria, contentWidth);
-      designHeight += Math.max(lines.length * lineHeight, 6) + 1;
+      designHeight += Math.max(lines.length * lineHeight, 6) + 1 + exclusionCriteriaExtraSpace;
     }
     if (quotation.skin_types) {
       const lines = pdf.splitTextToSize(quotation.skin_types, contentWidth);
@@ -451,6 +452,11 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     }
 
     designHeight += padding;
+
+    if (yPos + designHeight > pageHeight - margin) {
+      pdf.addPage();
+      yPos = margin;
+    }
 
     pdf.setDrawColor(100, 130, 200);
     pdf.setLineWidth(0.5);
@@ -529,7 +535,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       pdf.setFont('helvetica', 'normal');
       const excLines = pdf.splitTextToSize(quotation.exclusion_criteria, contentWidth);
       pdf.text(excLines, margin + labelWidth, designY);
-      designY += Math.max(excLines.length * lineHeight, 6) + 1;
+      designY += Math.max(excLines.length * lineHeight, 6) + 1 + exclusionCriteriaExtraSpace;
     }
 
     if (quotation.skin_types) {
