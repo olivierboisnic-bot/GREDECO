@@ -4,8 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --require ./esbuild-wasm-preload.cjs ./node_modules/vite/bin/vite.js",
-    "build": "node --require ./esbuild-wasm-preload.cjs ./node_modules/vite/bin/vite.js build",
+    "predev": "node patch-esbuild-wasm.cjs",
+    "dev": "vite",
+    "prebuild": "node patch-esbuild-wasm.cjs",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
