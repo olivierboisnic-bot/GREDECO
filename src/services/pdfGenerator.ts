@@ -63,6 +63,16 @@ const wrapText = (pdf: jsPDF, text: string, maxWidth: number): string[] => {
   return lines;
 };
 
+const formatCriteriaLines = (value: string): string[] => {
+  return value
+    .normalize('NFC')
+    .replace(/\r\n/g, '\n')
+    .split(/[\n;]+/)
+    .map((criterion: string) => criterion.replace(/^[•\-]+\s*/, '').replace(/\s+/g, ' ').trim())
+    .filter((criterion: string) => criterion.length > 0)
+    .map((criterion: string) => `• ${criterion}`);
+};
+
 const loadImageAsBase64 = (url: string): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -404,157 +414,86 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
                           quotation.number_of_volunteers || quotation.number_of_conditions;
 
   if (hasStudyDesign) {
-    pdf.setFillColor(255, 255, 255);
-    let designHeight = 12;
-    const lineHeight = 5;
-    const labelWidth = 65;
-    const contentWidth = pageWidth - 2 * margin - labelWidth - 8;
-    const padding = 5;
-    const exclusionCriteriaExtraSpace = 5;
-
-    pdf.setFontSize(9);
-
-    // Check study type to determine if ex vivo or in vivo
     const isExVivo = quotation.study_type === 'ex_vivo';
+    const designRows: Array<[string, string | string[]]> = [];
 
-    if (quotation.product_description) {
-      const lines = pdf.splitTextToSize(quotation.product_description, contentWidth);
-      designHeight += Math.max(lines.length * lineHeight, 6) + 1;
+    if (quotation.product_description?.trim()) {
+      designRows.push(['Produit:', quotation.product_description.trim()]);
     }
-    if (quotation.study_objectives) {
-      const lines = pdf.splitTextToSize(quotation.study_objectives, contentWidth);
-      designHeight += Math.max(lines.length * lineHeight, 6) + 1;
+    if (quotation.study_objectives?.trim()) {
+      designRows.push([t.studyObjectives, quotation.study_objectives.trim()]);
     }
-    if (quotation.methodology) {
-      const lines = pdf.splitTextToSize(quotation.methodology, contentWidth);
-      designHeight += Math.max(lines.length * lineHeight, 6) + 1;
+    if (quotation.methodology?.trim()) {
+      designRows.push(['Méthodologie:', quotation.methodology.trim()]);
     }
-
-    // Add study parameters section (panelists/peau and conditions)
     if (quotation.number_of_volunteers && quotation.number_of_volunteers > 0) {
-      designHeight += 6 + 1;
+      designRows.push([
+        isExVivo ? t.numberOfSkinFibroblast : t.numberOfPanelists,
+        quotation.number_of_volunteers.toString()
+      ]);
     }
     if (isExVivo && quotation.number_of_conditions && quotation.number_of_conditions > 0) {
-      designHeight += 6 + 1;
+      designRows.push(['Nombre de Conditions:', quotation.number_of_conditions.toString()]);
     }
-
-    if (quotation.inclusion_criteria) {
-      const lines = pdf.splitTextToSize(quotation.inclusion_criteria, contentWidth);
-      designHeight += Math.max(lines.length * lineHeight, 6) + 1;
+    if (quotation.inclusion_criteria?.trim()) {
+      designRows.push([t.inclusionCriteria, formatCriteriaLines(quotation.inclusion_criteria)]);
     }
-    if (quotation.exclusion_criteria) {
-      const lines = pdf.splitTextToSize(quotation.exclusion_criteria, contentWidth);
-      designHeight += Math.max(lines.length * lineHeight, 6) + 1 + exclusionCriteriaExtraSpace;
+    if (quotation.exclusion_criteria?.trim()) {
+      designRows.push([t.exclusionCriteria, formatCriteriaLines(quotation.exclusion_criteria)]);
     }
-    if (quotation.skin_types) {
-      const lines = pdf.splitTextToSize(quotation.skin_types, contentWidth);
-      designHeight += Math.max(lines.length * lineHeight, 6) + 1;
-    }
-
-    designHeight += padding;
-
-    if (yPos + designHeight > pageHeight - margin) {
-      pdf.addPage();
-      yPos = margin;
-    }
-
-    pdf.setDrawColor(100, 130, 200);
-    pdf.setLineWidth(0.5);
-    pdf.rect(margin, yPos, pageWidth - 2 * margin, designHeight, 'S');
-
-    pdf.setFillColor(100, 130, 200);
-    pdf.rect(margin, yPos, pageWidth - 2 * margin, 11, 'F');
-
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(11);
-    pdf.setFont('helvetica', 'bold');
-    let designY = yPos + 7;
-    pdf.text(t.studyDesign, margin + padding, designY);
-    designY += 8;
-
-    pdf.setTextColor(0, 0, 0);
-    pdf.setFontSize(9);
-
-    if (quotation.product_description) {
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Produit:', margin + padding, designY);
-      pdf.setFont('helvetica', 'normal');
-      const productLines = pdf.splitTextToSize(quotation.product_description, contentWidth);
-      pdf.text(productLines, margin + labelWidth, designY);
-      designY += Math.max(productLines.length * lineHeight, 6) + 1;
-    }
-
-    if (quotation.study_objectives) {
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(t.studyObjectives, margin + padding, designY);
-      pdf.setFont('helvetica', 'normal');
-      const objLines = pdf.splitTextToSize(quotation.study_objectives, contentWidth);
-      pdf.text(objLines, margin + labelWidth, designY);
-      designY += Math.max(objLines.length * lineHeight, 6) + 1;
-    }
-
-    if (quotation.methodology) {
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Méthodologie:', margin + padding, designY);
-      pdf.setFont('helvetica', 'normal');
-      const methLines = pdf.splitTextToSize(quotation.methodology, contentWidth);
-      pdf.text(methLines, margin + labelWidth, designY);
-      designY += Math.max(methLines.length * lineHeight, 6) + 1;
-    }
-
-    // Add study parameters (panelists/peau and conditions)
-    if (quotation.number_of_volunteers && quotation.number_of_volunteers > 0) {
-      pdf.setFont('helvetica', 'bold');
-      const label = isExVivo ? t.numberOfSkinFibroblast : t.numberOfPanelists;
-      pdf.text(label, margin + padding, designY);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(quotation.number_of_volunteers.toString(), margin + labelWidth, designY);
-      designY += 6 + 1;
-    }
-
-    if (isExVivo && quotation.number_of_conditions && quotation.number_of_conditions > 0) {
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Nombre de Conditions:', margin + padding, designY);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(quotation.number_of_conditions.toString(), margin + labelWidth, designY);
-      designY += 6 + 1;
-    }
-
-    if (quotation.inclusion_criteria) {
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(t.inclusionCriteria, margin + padding, designY);
-      pdf.setFont('helvetica', 'normal');
-      const incLines = pdf.splitTextToSize(quotation.inclusion_criteria, contentWidth);
-      pdf.text(incLines, margin + labelWidth, designY);
-      designY += Math.max(incLines.length * lineHeight, 6) + 1;
-    }
-
-    if (quotation.exclusion_criteria) {
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(t.exclusionCriteria, margin + padding, designY);
-      pdf.setFont('helvetica', 'normal');
-      const excLines = pdf.splitTextToSize(quotation.exclusion_criteria, contentWidth);
-      pdf.text(excLines, margin + labelWidth, designY);
-      designY += Math.max(excLines.length * lineHeight, 6) + 1 + exclusionCriteriaExtraSpace;
-    }
-
-    if (quotation.skin_types) {
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(t.skinTypes, margin + padding, designY);
-      pdf.setFont('helvetica', 'normal');
-      // Clean up skin types by removing "Phototype" or "Phototypes" prefix and duplicates
+    if (quotation.skin_types?.trim()) {
       const cleanedSkinTypes = Array.from(new Set(quotation.skin_types
         .split(',')
-        .map((s: string) => s.trim())
-        .map((s: string) => s.replace(/^Phototypes?\s*/i, ''))
-        .filter((s: string) => s.length > 0)))
+        .map((skinType: string) => skinType.trim().replace(/^Phototypes?\s*/i, ''))
+        .filter((skinType: string) => skinType.length > 0)))
         .join(', ');
-      const skinLines = pdf.splitTextToSize(cleanedSkinTypes, contentWidth);
-      pdf.text(skinLines, margin + labelWidth, designY);
-      designY += Math.max(skinLines.length * lineHeight, 6) + 1;
+      designRows.push([t.skinTypes, cleanedSkinTypes]);
     }
 
-    yPos = yPos + designHeight + 8;
+    autoTable(pdf, {
+      startY: yPos,
+      head: [[{
+        content: t.studyDesign,
+        colSpan: 2,
+        styles: {
+          fillColor: [100, 130, 200],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 11,
+          halign: 'left'
+        }
+      }]],
+      body: designRows,
+      theme: 'grid',
+      margin: { left: margin, right: margin, top: margin, bottom: margin },
+      styles: {
+        font: 'helvetica',
+        fontSize: 8.5,
+        textColor: [0, 0, 0],
+        cellPadding: { top: 3, right: 4, bottom: 3, left: 4 },
+        lineColor: [100, 130, 200],
+        lineWidth: 0.25,
+        overflow: 'linebreak',
+        valign: 'top'
+      },
+      columnStyles: {
+        0: { cellWidth: 52, fontStyle: 'bold' },
+        1: { cellWidth: 'auto' }
+      },
+      headStyles: {
+        fillColor: [100, 130, 200],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255]
+      },
+      rowPageBreak: 'auto',
+      showHead: 'everyPage'
+    });
+
+    const designTable = (pdf as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable;
+    yPos = (designTable?.finalY || yPos) + 8;
   }
 
   // Load all images first (in the order items are provided)
