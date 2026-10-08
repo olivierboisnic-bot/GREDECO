@@ -1,7 +1,7 @@
-import { Plus, Trash2, X, Search, ChevronDown, ChevronUp, RefreshCw, Copy, GripVertical } from 'lucide-react';
+import { Plus, Trash2, X, Search, ChevronDown, ChevronUp, RefreshCw, Copy, GripVertical, Upload, ImagePlus } from 'lucide-react';
 import { StudyObjective, AVAILABLE_TIMEPOINTS, ServiceInstance } from '../types/studyObjective';
 import { Service } from '../lib/supabase';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent, type ClipboardEvent } from 'react';
 import { generateStableObjectiveId } from '../utils/objectiveId';
 import { formatCurrency } from '../utils/numberFormat';
 
@@ -36,6 +36,83 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   const [draggedObjectiveId, setDraggedObjectiveId] = useState<string | null>(null);
   const [draggedObjectiveIndex, setDraggedObjectiveIndex] = useState<number | null>(null);
+
+  const handleImageFile = (file: File, itemIndex: number): void => {
+    if (!file.type.startsWith('image/')) {
+      alert('Veuillez sélectionner une image.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('L’image doit faire moins de 5 Mo.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        onUpdateItem(itemIndex, 'image_url', reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImagePaste = (event: ClipboardEvent<HTMLDivElement>, itemIndex: number): void => {
+    const imageFile = Array.from(event.clipboardData.items)
+      .map((item: DataTransferItem) => item.kind === 'file' ? item.getAsFile() : null)
+      .find((file: File | null): file is File => file !== null && file.type.startsWith('image/'));
+
+    if (imageFile) {
+      event.preventDefault();
+      handleImageFile(imageFile, itemIndex);
+    }
+  };
+
+  const renderImageControls = (item: any, itemIndex: number, accent: 'blue' | 'orange'): JSX.Element => {
+    const isOrange = accent === 'orange';
+    return (
+      <div
+        className={`mt-3 rounded-lg border p-3 ${isOrange ? 'border-orange-200 bg-orange-50' : 'border-blue-200 bg-blue-50'}`}
+        onPaste={(event) => handleImagePaste(event, itemIndex)}
+        tabIndex={0}
+      >
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <label className="text-xs font-medium text-gray-700">Photo du service (optionnelle)</label>
+          <label className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white rounded cursor-pointer ${isOrange ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
+            <Upload size={13} />
+            Importer
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                const file = event.target.files?.[0];
+                if (file) handleImageFile(file, itemIndex);
+                event.target.value = '';
+              }}
+            />
+          </label>
+        </div>
+        {item.image_url ? (
+          <div className="flex items-center gap-3">
+            <img src={item.image_url} alt="Aperçu du service" className="h-20 w-28 rounded border border-gray-200 bg-white object-contain" />
+            <div className="flex-1 text-xs text-gray-600">Collez une capture dans cette zone pour remplacer la photo.</div>
+            <button
+              type="button"
+              onClick={() => onUpdateItem(itemIndex, 'image_url', '')}
+              className="px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 rounded"
+            >
+              Supprimer
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <ImagePlus size={15} />
+            Cliquez ici puis collez une capture d’écran avec Ctrl+V / Cmd+V.
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const getItemKey = (item: any): string => {
     if (!item.service_id) return 'no_service';
@@ -955,6 +1032,8 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
                           </div>
                         </div>
 
+                        {renderImageControls(item, itemIndex, 'blue')}
+
                         <div className="p-2 bg-gray-50 rounded border border-gray-200">
                           <div className="flex items-center gap-2 flex-wrap">
                             <div className="flex items-center gap-2">
@@ -1169,9 +1248,10 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
                         </div>
                       </div>
                     </div>
-                      </div>
-                    </div>
+                    {renderImageControls(item, itemIndex, 'orange')}
                   </div>
+                </div>
+              </div>
                 );
               })}
 
