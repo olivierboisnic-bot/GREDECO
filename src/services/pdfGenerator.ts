@@ -761,7 +761,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   console.log('=== FINAL IMAGE MAPPING ===');
   console.log('ImageData keys:', Object.keys(imageData));
   Object.keys(imageData).forEach(k => {
-    console.log(`  Row ${k}: ${imageData[parseInt(k)].substring(0, 60)}...`);
+    console.log(`  Row ${k}: ${imageData[parseInt(k)].data.substring(0, 60)}...`);
   });
   console.log('Total tableData rows:', tableData.length);
 
