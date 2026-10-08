@@ -20,11 +20,13 @@ interface ObjectiveGroup {
 
 const sortTimepoints = (timepoints: string[]): string[] => {
   const getTimepointValueInMinutes = (timepoint: string): number => {
-    // T0 always comes first
-    if (timepoint === 'T0') return 0;
+    const normalizedTimepoint = timepoint.trim().toUpperCase();
+    if (normalizedTimepoint === 'T IMMEDIAT') return -2;
+    if (normalizedTimepoint === 'T IMM') return -1;
+    if (normalizedTimepoint === 'T0') return 0;
 
     // Remove the 'T' prefix and work with uppercase for consistency
-    const value = timepoint.substring(1).toUpperCase();
+    const value = normalizedTimepoint.substring(1);
 
     // Check for minutes (MIN or M at the end)
     if (value.endsWith('MIN')) {

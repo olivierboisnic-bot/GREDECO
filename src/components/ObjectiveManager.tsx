@@ -123,8 +123,13 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
 
   const sortTimepoints = (timepoints: string[]): string[] => {
     const getTimepointValueInMinutes = (timepoint: string): number => {
+      const normalizedTimepoint = timepoint.trim().toUpperCase();
+      if (normalizedTimepoint === 'T IMMEDIAT') return -2;
+      if (normalizedTimepoint === 'T IMM') return -1;
+      if (normalizedTimepoint === 'T0') return 0;
+
       // Remove the 'T' prefix and work with uppercase for consistency
-      const value = timepoint.substring(1).toUpperCase();
+      const value = normalizedTimepoint.substring(1);
 
       // Check for minutes (MIN or M)
       if (value.endsWith('MIN')) {

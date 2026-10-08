@@ -19,6 +19,8 @@ export interface TimepointOption {
 }
 
 export const AVAILABLE_TIMEPOINTS: TimepointOption[] = [
+  { label: 'T Immediat', value: 'T Immediat' },
+  { label: 'T imm', value: 'T imm' },
   { label: 'T0 (Baseline)', value: 'T0' },
   { label: 'T15min', value: 'T15min' },
   { label: 'T30min', value: 'T30min' },
