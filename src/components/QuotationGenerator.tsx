@@ -471,6 +471,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       service_id: item.service_id,
       service_name: item.service_name,
       description: item.description,
+      image_url: item.image_url || null,
       objective_name: item.objective_name,
       objective_timepoints: item.objective_timepoints,
       quantity: item.quantity,
@@ -1258,7 +1259,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
             service_id: serviceId,
             service_name: serviceName,
             description,
-            image_url: service?.image_url || null,
+            image_url: existingItem?.image_url || service?.image_url || null,
             objective_id: objective.id,
             objective_name: objective.name,
             objective_timepoints: timepoints.join(', '),
@@ -1303,7 +1304,11 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
               service_id: serviceId,
               service_name: customServiceName,
               description: instanceDescription,
-              image_url: service?.image_url || null,
+              image_url: itemsRef.current.find(item =>
+                item.service_id === serviceId &&
+                item.objective_name === objective.name &&
+                item.instance_id === instance.instanceId
+              )?.image_url || existingItem?.image_url || service?.image_url || null,
               objective_id: objective.id,
               objective_name: objective.name,
               objective_timepoints: instanceTimepoints.join(', '),
