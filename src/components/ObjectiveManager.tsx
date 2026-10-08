@@ -37,23 +37,68 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
   const [draggedObjectiveId, setDraggedObjectiveId] = useState<string | null>(null);
   const [draggedObjectiveIndex, setDraggedObjectiveIndex] = useState<number | null>(null);
 
-  const handleImageFile = (file: File, itemIndex: number): void => {
+  const compressImage = (file: File, maxDimension: number = 1200, quality: number = 0.85): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.naturalWidth || img.width;
+          let height = img.naturalHeight || img.height;
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height / width) * maxDimension);
+              width = maxDimension;
+            } else {
+              width = Math.round((width / height) * maxDimension);
+              height = maxDimension;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Canvas context unavailable'));
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          const isPng = file.type === 'image/png';
+          const dataUrl = isPng
+            ? canvas.toDataURL('image/png')
+            : canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = reader.result as string;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageFile = async (file: File, itemIndex: number): Promise<void> => {
     if (!file.type.startsWith('image/')) {
       alert('Veuillez sélectionner une image.');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('L’image doit faire moins de 5 Mo.');
+    if (file.size > 15 * 1024 * 1024) {
+      alert("L'image doit faire moins de 15 Mo.");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        onUpdateItem(itemIndex, 'image_url', reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressedDataUrl = await compressImage(file);
+      onUpdateItem(itemIndex, 'image_url', compressedDataUrl);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          onUpdateItem(itemIndex, 'image_url', reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleImagePaste = (event: ClipboardEvent<HTMLDivElement>, itemIndex: number): void => {
@@ -63,7 +108,7 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
 
     if (imageFile) {
       event.preventDefault();
-      handleImageFile(imageFile, itemIndex);
+      void handleImageFile(imageFile, itemIndex);
     }
   };
 
@@ -71,9 +116,10 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
     const isOrange = accent === 'orange';
     return (
       <div
-        className={`mt-3 rounded-lg border p-3 ${isOrange ? 'border-orange-200 bg-orange-50' : 'border-blue-200 bg-blue-50'}`}
+        className={`mt-3 rounded-lg border-2 border-dashed p-3 transition-colors ${isOrange ? 'border-orange-300 bg-orange-50 focus-within:border-orange-500' : 'border-blue-300 bg-blue-50 focus-within:border-blue-500'}`}
         onPaste={(event) => handleImagePaste(event, itemIndex)}
         tabIndex={0}
+        style={{ outline: 'none' }}
       >
         <div className="flex items-center justify-between gap-2 mb-2">
           <label className="text-xs font-medium text-gray-700">Photo du service (optionnelle)</label>
@@ -86,7 +132,7 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
               className="hidden"
               onChange={(event: ChangeEvent<HTMLInputElement>) => {
                 const file = event.target.files?.[0];
-                if (file) handleImageFile(file, itemIndex);
+                if (file) void handleImageFile(file, itemIndex);
                 event.target.value = '';
               }}
             />
@@ -95,7 +141,7 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
         {item.image_url ? (
           <div className="flex items-center gap-3">
             <img src={item.image_url} alt="Aperçu du service" className="h-20 w-28 rounded border border-gray-200 bg-white object-contain" />
-            <div className="flex-1 text-xs text-gray-600">Collez une capture dans cette zone pour remplacer la photo.</div>
+            <div className="flex-1 text-xs text-gray-600">Cliquez ici puis collez (Ctrl+V / Cmd+V) pour remplacer la photo.</div>
             <button
               type="button"
               onClick={() => onUpdateItem(itemIndex, 'image_url', '')}
@@ -105,9 +151,9 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className={`flex items-center gap-2 text-xs py-2 px-3 rounded border border-dashed cursor-text select-none ${isOrange ? 'border-orange-300 text-orange-700' : 'border-blue-300 text-blue-700'}`}>
             <ImagePlus size={15} />
-            Cliquez ici puis collez une capture d’écran avec Ctrl+V / Cmd+V.
+            <span>Cliquez ici puis collez une capture d'écran avec Ctrl+V / Cmd+V</span>
           </div>
         )}
       </div>

@@ -112,6 +112,42 @@ const loadImageAsBase64 = (url: string): Promise<string> => {
   });
 };
 
+interface ImageWithDimensions {
+  data: string;
+  width: number;
+  height: number;
+}
+
+const loadImageWithDimensions = (url: string): Promise<ImageWithDimensions> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      img.crossOrigin = 'anonymous';
+    }
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const dataUrl = canvas.toDataURL('image/png');
+          resolve({ data: dataUrl, width: canvas.width, height: canvas.height });
+        } else {
+          resolve({ data: '', width: 0, height: 0 });
+        }
+      } catch {
+        resolve({ data: '', width: 0, height: 0 });
+      }
+    };
+    img.onerror = () => resolve({ data: '', width: 0, height: 0 });
+    img.src = url;
+  });
+};
+
 const loadSVGAsBase64 = async (url: string, width: number, height: number): Promise<string> => {
   return new Promise((resolve) => {
     fetch(url)
@@ -502,25 +538,23 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   const imagePromises = items.map(async (item) => {
     if (item.image_url) {
       try {
-        const imageData = await loadImageAsBase64(item.image_url);
-        return imageData;
+        const imgResult = await loadImageWithDimensions(item.image_url);
+        return imgResult;
       } catch (error) {
         console.error('Failed to load image:', item.image_url, error);
-        // Don't fail the entire PDF generation if one image fails
-        return '';
+        return { data: '', width: 0, height: 0 };
       }
     }
-    return '';
+    return { data: '', width: 0, height: 0 };
   });
 
-  let loadedImages: string[] = [];
+  let loadedImages: ImageWithDimensions[] = [];
   try {
     loadedImages = await Promise.all(imagePromises);
-    console.log('All images loaded successfully:', loadedImages.filter(img => img).length, 'images');
+    console.log('All images loaded successfully:', loadedImages.filter(img => img.data).length, 'images');
   } catch (error) {
     console.error('Error loading images, continuing without images:', error);
-    // Continue with empty images array if loading fails
-    loadedImages = items.map(() => '');
+    loadedImages = items.map(() => ({ data: '', width: 0, height: 0 }));
   }
 
   // Parse saved objectives data
@@ -543,7 +577,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   });
 
   const tableData: any[] = [];
-  const imageData: { [key: number]: string } = {};
+  const imageData: { [key: number]: ImageWithDimensions } = {};
 
   let currentObjective: string | null = null;
   let mandatoryHeaderAdded = false;
@@ -707,10 +741,10 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     const adjustedAmountHT = adjustedUnitPrice * item.quantity;
 
     const rowIndex = tableData.length;
-    const imgData = loadedImages[itemIndex];
-    console.log(`Item ${itemIndex}: rowIndex=${rowIndex}, hasImage=${!!imgData}, imageLength=${imgData?.length || 0}`);
-    if (imgData) {
-      imageData[rowIndex] = imgData;
+    const imgResult = loadedImages[itemIndex];
+    console.log(`Item ${itemIndex}: rowIndex=${rowIndex}, hasImage=${!!imgResult?.data}, imageLength=${imgResult?.data?.length || 0}`);
+    if (imgResult && imgResult.data) {
+      imageData[rowIndex] = imgResult;
       console.log(`  → Mapped image to row ${rowIndex}`);
     }
 
@@ -800,16 +834,16 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       // Adjust cell height if image is present
       if (data.column.index === 0 && data.section === 'body') {
         const imgData = imageData[data.row.index];
-        if (imgData) {
+        if (imgData && imgData.data) {
           // Calculate required height based on text lines
           const lineHeight = 3.5;
           const textHeight = data.cell.text.length * lineHeight;
-          const imageHeight = 25;
+          const imageHeight = 30;
           const padding = 10;
           const requiredHeight = textHeight + imageHeight + padding;
 
           // Set minimum height to accommodate text + image + padding
-          data.cell.styles.minCellHeight = Math.max(35, requiredHeight);
+          data.cell.styles.minCellHeight = Math.max(40, requiredHeight);
           console.log(`Cell ${data.row.index}: ${data.cell.text.length} lines, setting minHeight to ${data.cell.styles.minCellHeight}`);
         }
       }
@@ -818,9 +852,9 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
       // Draw images in the first column if available
       if (data.column.index === 0 && data.section === 'body') {
         const imgData = imageData[data.row.index];
-        console.log(`Drawing row ${data.row.index}: hasImage=${!!imgData}, cellHeight=${data.cell.height}, textLines=${data.cell.text.length}, text="${data.cell.text[0]?.substring(0, 30)}..."`);
-        if (imgData) {
-          console.log(`  → Found image for row ${data.row.index}, length=${imgData.length}`);
+        console.log(`Drawing row ${data.row.index}: hasImage=${!!imgData?.data}, cellHeight=${data.cell.height}, textLines=${data.cell.text.length}, text="${data.cell.text[0]?.substring(0, 30)}..."`);
+        if (imgData && imgData.data) {
+          console.log(`  → Found image for row ${data.row.index}, length=${imgData.data.length}`);
 
           const cellX = data.cell.x;
           const cellY = data.cell.y;
@@ -832,21 +866,41 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
           const textHeight = data.cell.text.length * lineHeight;
           const imageY = cellY + textHeight + 3;
 
-          // Image dimensions
-          const maxImageHeight = Math.min(25, cellHeight - textHeight - 6);
+          // Image dimensions - preserve aspect ratio
+          const maxImageHeight = Math.min(30, cellHeight - textHeight - 6);
           const maxImageWidth = cellWidth - 6;
 
-          console.log(`  → Image size: ${maxImageWidth}x${maxImageHeight}, at position (${cellX + 3}, ${imageY})`);
+          let drawWidth = maxImageWidth;
+          let drawHeight = maxImageHeight;
 
-          if (maxImageHeight > 5) {
+          if (imgData.width > 0 && imgData.height > 0) {
+            const aspectRatio = imgData.width / imgData.height;
+            // Fit image within the bounding box while preserving aspect ratio
+            if (maxImageWidth / maxImageHeight > aspectRatio) {
+              // Height is the limiting factor
+              drawHeight = maxImageHeight;
+              drawWidth = drawHeight * aspectRatio;
+            } else {
+              // Width is the limiting factor
+              drawWidth = maxImageWidth;
+              drawHeight = drawWidth / aspectRatio;
+            }
+          }
+
+          // Center the image horizontally within the cell
+          const imageX = cellX + 3 + (maxImageWidth - drawWidth) / 2;
+
+          console.log(`  → Image size: ${drawWidth}x${drawHeight} (aspect-ratio preserved), at position (${imageX}, ${imageY})`);
+
+          if (drawHeight > 5) {
             try {
-              pdf.addImage(imgData, 'PNG', cellX + 3, imageY, maxImageWidth, maxImageHeight, undefined, 'FAST');
+              pdf.addImage(imgData.data, 'PNG', imageX, imageY, drawWidth, drawHeight, undefined, 'FAST');
               console.log('  → Image added successfully');
             } catch (error) {
               console.error('Error adding image to PDF:', error);
             }
           } else {
-            console.log('  → Image skipped (maxImageHeight too small)');
+            console.log('  → Image skipped (drawHeight too small)');
           }
         }
       }
