@@ -24,6 +24,8 @@ interface Translations {
   totalExclTax: string;
   totalVat: string;
   totalInclTax: string;
+  discount: string;
+  totalAfterDiscount: string;
   taxCreditText: string;
   agreementForApproval: string;
   investigatorSignature: string;
@@ -60,6 +62,8 @@ export const translations: Record<Language, Translations> = {
     totalExclTax: 'Total HT',
     totalVat: 'Total TVA',
     totalInclTax: 'Total TTC',
+    discount: 'Remise',
+    totalAfterDiscount: 'Total HT après remise',
     taxCreditText: 'GREDECO a reçu l\'agrément en ce qui concerne le crédit d\'impôt en faveur de la recherche de 2027 à 2030',
     agreementForApproval: 'Bon pour accord',
     investigatorSignature: 'Signature Investigateur',
@@ -135,6 +139,8 @@ export const translations: Record<Language, Translations> = {
     totalExclTax: 'Total Excl. VAT',
     totalVat: 'Total VAT',
     totalInclTax: 'Total Incl. VAT',
+    discount: 'Discount',
+    totalAfterDiscount: 'Total Excl. VAT after discount',
     taxCreditText: 'GREDECO has received accreditation for the research tax credit from 2027 to 2030',
     agreementForApproval: 'Approved',
     investigatorSignature: 'Investigator Signature',

@@ -7,6 +7,7 @@ import { StudyObjective } from '../types/studyObjective';
 import { generateStableObjectiveId } from '../utils/objectiveId';
 import { useNotification } from '../hooks/useNotification';
 import { formatCurrency } from '../utils/numberFormat';
+import { computeQuotationTotals, GlobalDiscountType } from '../utils/quotationTotals';
 import { importQuotationFromExcel } from '../services/excelImporter';
 
 interface QuotationGeneratorProps {
@@ -50,6 +51,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
   const [validDays, setValidDays] = useState(30);
   const [vatRate, setVatRate] = useState(20);
   const [globalDiscountPercent, setGlobalDiscountPercent] = useState(0);
+  const [globalDiscountType, setGlobalDiscountType] = useState<GlobalDiscountType>('percent');
+  const [globalDiscountAmount, setGlobalDiscountAmount] = useState(0);
   const [studyDesign, setStudyDesign] = useState<StudyDesign | null>({
     studyType: 'in_vivo',
     numberOfPanelists: 30,
@@ -795,6 +798,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     setItems(loadedItems);
     setVatRate(quotation.vat_rate || 20);
     setGlobalDiscountPercent(quotation.global_discount_percent || 0);
+    setGlobalDiscountType(quotation.global_discount_type || 'percent');
+    setGlobalDiscountAmount(quotation.global_discount_amount || 0);
     setNotes(quotation.notes || '');
     setLoadedItemKeys(loadedKeys);
 
@@ -1695,9 +1700,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     if (field === 'quantity' || field === 'unit_price' || field === 'discount_percent' || field === 'vat_percent') {
       const qty = Number(item.quantity);
       const price = Number(item.unit_price);
-      const discount = Number(item.discount_percent);
       const vat = Number(item.vat_percent || vatRate);
-      const amountWithoutTax = qty * price * (1 - discount / 100);
+      const amountWithoutTax = qty * price;
       item.amount_without_tax = amountWithoutTax;
       item.vat_percent = vat;
       item.subtotal = amountWithoutTax * (1 + vat / 100);
@@ -1954,7 +1958,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     }
 
     updatedItems[itemIndex].quantity = newQuantity;
-    const amountWithoutTax = newQuantity * updatedItems[itemIndex].unit_price * (1 - updatedItems[itemIndex].discount_percent / 100);
+    const amountWithoutTax = newQuantity * updatedItems[itemIndex].unit_price;
     updatedItems[itemIndex].amount_without_tax = amountWithoutTax;
     updatedItems[itemIndex].subtotal = amountWithoutTax * (1 + updatedItems[itemIndex].vat_percent / 100);
 
@@ -2049,7 +2053,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     }
 
     updatedItems[itemIndex].quantity = newQuantity;
-    const amountWithoutTax = newQuantity * updatedItems[itemIndex].unit_price * (1 - updatedItems[itemIndex].discount_percent / 100);
+    const amountWithoutTax = newQuantity * updatedItems[itemIndex].unit_price;
     updatedItems[itemIndex].amount_without_tax = amountWithoutTax;
     updatedItems[itemIndex].subtotal = amountWithoutTax * (1 + updatedItems[itemIndex].vat_percent / 100);
 
@@ -2145,7 +2149,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       }
 
       updatedItems[itemIndex].quantity = newQuantity;
-      const amountWithoutTax = newQuantity * updatedItems[itemIndex].unit_price * (1 - updatedItems[itemIndex].discount_percent / 100);
+      const amountWithoutTax = newQuantity * updatedItems[itemIndex].unit_price;
       updatedItems[itemIndex].amount_without_tax = amountWithoutTax;
       updatedItems[itemIndex].subtotal = amountWithoutTax * (1 + updatedItems[itemIndex].vat_percent / 100);
 
@@ -2163,28 +2167,13 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     }
   };
 
-  const calculateTotal = () => {
-    return items.reduce((sum, item) => {
-      const totalDiscount = (item.discount_percent || 0) + globalDiscountPercent;
-      const adjustedUnitPrice = item.unit_price * (1 - totalDiscount / 100);
-      const adjustedAmountHT = adjustedUnitPrice * item.quantity;
-      const adjustedAmountTTC = adjustedAmountHT * (1 + (item.vat_percent || 20) / 100);
-      return sum + adjustedAmountTTC;
-    }, 0);
-  };
+  const getTotals = () => computeQuotationTotals(items, {
+    type: globalDiscountType,
+    percent: globalDiscountPercent,
+    amount: globalDiscountAmount,
+  });
 
-  const calculateTotalHT = () => {
-    return items.reduce((sum, item) => {
-      const totalDiscount = (item.discount_percent || 0) + globalDiscountPercent;
-      const adjustedUnitPrice = item.unit_price * (1 - totalDiscount / 100);
-      const adjustedAmountHT = adjustedUnitPrice * item.quantity;
-      return sum + adjustedAmountHT;
-    }, 0);
-  };
-
-  const calculateTotalTTC = () => {
-    return calculateTotal();
-  };
+  const calculateTotal = () => getTotals().totalTTC;
 
   const generateQuotationNumber = () => {
     const date = new Date();
@@ -2305,6 +2294,8 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       timepoints: `T0, T${studyDesign?.numberOfTimepoints || 0}`,
       vat_rate: vatRate,
       global_discount_percent: globalDiscountPercent,
+      global_discount_type: globalDiscountType,
+      global_discount_amount: globalDiscountAmount,
       language: pdfLanguage,
     };
 
@@ -3390,7 +3381,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
                               : '';
                           if (itemKey) recalculatedItemKeys.add(itemKey);
 
-                          const amountWithoutTax = newQuantity * item.unit_price * (1 - item.discount_percent / 100);
+                          const amountWithoutTax = newQuantity * item.unit_price;
                           const subtotal = amountWithoutTax * (1 + item.vat_percent / 100);
                           return {
                             ...item,
@@ -3458,7 +3449,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
                               : '';
                           if (itemKey) recalculatedItemKeys.add(itemKey);
 
-                          const amountWithoutTax = newQuantity * item.unit_price * (1 - item.discount_percent / 100);
+                          const amountWithoutTax = newQuantity * item.unit_price;
                           const subtotal = amountWithoutTax * (1 + item.vat_percent / 100);
                           return {
                             ...item,
@@ -3534,7 +3525,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
                                     : '';
                                 if (itemKey) recalculatedItemKeys.add(itemKey);
 
-                                const amountWithoutTax = newQuantity * item.unit_price * (1 - item.discount_percent / 100);
+                                const amountWithoutTax = newQuantity * item.unit_price;
                                 const subtotal = amountWithoutTax * (1 + item.vat_percent / 100);
                                 return {
                                   ...item,
@@ -3721,20 +3712,50 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
 
         <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <label className="block text-sm font-semibold text-gray-900 mb-2">
-            Remise Globale (%)
+            Remise sur le total
           </label>
-          <input
-            type="number"
-            value={globalDiscountPercent}
-            onChange={(e) => setGlobalDiscountPercent(Math.max(0, Math.min(100, Number(e.target.value))))}
-            className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-            min="0"
-            max="100"
-            step="0.1"
-            placeholder="0"
-          />
+          <div className="flex items-center gap-3">
+            <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setGlobalDiscountType('percent')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${globalDiscountType === 'percent' ? 'bg-yellow-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+              >
+                %
+              </button>
+              <button
+                type="button"
+                onClick={() => setGlobalDiscountType('amount')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${globalDiscountType === 'amount' ? 'bg-yellow-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+              >
+                Montant (€)
+              </button>
+            </div>
+            {globalDiscountType === 'percent' ? (
+              <input
+                type="number"
+                value={globalDiscountPercent}
+                onChange={(e) => setGlobalDiscountPercent(Math.max(0, Math.min(100, Number(e.target.value))))}
+                className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                min="0"
+                max="100"
+                step="0.1"
+                placeholder="0"
+              />
+            ) : (
+              <input
+                type="number"
+                value={globalDiscountAmount}
+                onChange={(e) => setGlobalDiscountAmount(Math.max(0, Number(e.target.value)))}
+                className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                min="0"
+                step="0.01"
+                placeholder="0"
+              />
+            )}
+          </div>
           <p className="text-xs text-gray-600 mt-1">
-            Cette remise s'appliquera à tous les services du devis
+            Cette remise s'appliquera au total HT du devis
           </p>
         </div>
 
@@ -3742,11 +3763,21 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
           <div className="space-y-2">
             <div className="flex items-center gap-4">
               <span className="text-lg font-semibold text-gray-700">Total HT:</span>
-              <span className="text-xl font-bold text-gray-900">{formatCurrency(calculateTotalHT())} €</span>
+              <span className="text-xl font-bold text-gray-900">{formatCurrency(getTotals().subtotalHT)} €</span>
+            </div>
+            {getTotals().discountAmount > 0 && (
+              <div className="flex items-center gap-4">
+                <span className="text-lg font-semibold text-red-600">Remise:</span>
+                <span className="text-xl font-bold text-red-600">-{formatCurrency(getTotals().discountAmount)} €</span>
+              </div>
+            )}
+            <div className="flex items-center gap-4">
+              <span className="text-lg font-semibold text-gray-700">Total HT après remise:</span>
+              <span className="text-xl font-bold text-gray-900">{formatCurrency(getTotals().totalHT)} €</span>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-lg font-semibold text-gray-700">Total TTC:</span>
-              <span className="text-2xl font-bold text-green-600">{formatCurrency(calculateTotalTTC())} €</span>
+              <span className="text-2xl font-bold text-green-600">{formatCurrency(getTotals().totalTTC)} €</span>
             </div>
           </div>
           <button

@@ -3,6 +3,7 @@ import { Eye, Download, Pen as Edit2, Trash2, Search } from 'lucide-react';
 import { supabase, Quotation, QuotationItem } from '../lib/supabase';
 import QuotationPreview from './QuotationPreview';
 import { formatCurrency } from '../utils/numberFormat';
+import { computeQuotationTotals, GlobalDiscount } from '../utils/quotationTotals';
 
 interface QuotationListProps {
   onEditQuotation?: (quotationId: string) => void;
@@ -21,7 +22,7 @@ export default function QuotationList({ onEditQuotation }: QuotationListProps) {
     loadQuotations();
   }, []);
 
-  const calculateQuotationTotal = async (quotationId: string, globalDiscount: number) => {
+  const calculateQuotationTotal = async (quotationId: string, discount: GlobalDiscount) => {
     const { data: items, error } = await supabase
       .from('quotation_items')
       .select('*')
@@ -31,15 +32,7 @@ export default function QuotationList({ onEditQuotation }: QuotationListProps) {
       return null;
     }
 
-    const totalTTC = items.reduce((sum, item) => {
-      const totalDiscount = (item.discount_percent || 0) + globalDiscount;
-      const adjustedUnitPrice = item.unit_price * (1 - totalDiscount / 100);
-      const adjustedAmountHT = adjustedUnitPrice * item.quantity;
-      const adjustedAmountTTC = adjustedAmountHT * (1 + (item.vat_percent || 20) / 100);
-      return sum + adjustedAmountTTC;
-    }, 0);
-
-    return totalTTC;
+    return computeQuotationTotals(items, discount).totalTTC;
   };
 
   const loadQuotations = async () => {
@@ -68,10 +61,11 @@ export default function QuotationList({ onEditQuotation }: QuotationListProps) {
       if (data) {
         await Promise.all(
           data.map(async (quotation) => {
-            const calculatedTotal = await calculateQuotationTotal(
-              quotation.id,
-              quotation.global_discount_percent || 0
-            );
+            const calculatedTotal = await calculateQuotationTotal(quotation.id, {
+              type: quotation.global_discount_type || 'percent',
+              percent: quotation.global_discount_percent || 0,
+              amount: quotation.global_discount_amount || 0,
+            });
             if (calculatedTotal !== null) {
               totalsMap.set(quotation.id, calculatedTotal);
             }

@@ -1023,7 +1023,7 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
                           />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
                               Quantité
@@ -1052,19 +1052,6 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
                               value={item.unit_price}
                               onFocus={(e) => e.target.select()}
                               onChange={(e) => onUpdateItem(itemIndex, 'unit_price', parseFloat(e.target.value))}
-                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Remise (%)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={item.discount_percent}
-                              onFocus={(e) => e.target.select()}
-                              onChange={(e) => onUpdateItem(itemIndex, 'discount_percent', parseFloat(e.target.value))}
                               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
@@ -1245,7 +1232,7 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Quantité
@@ -1269,19 +1256,6 @@ export default function ObjectiveManager({ objectives, services, onObjectivesCha
                           value={item.unit_price || 0}
                           onFocus={(e) => e.target.select()}
                           onChange={(e) => onUpdateItem(itemIndex, 'unit_price', parseFloat(e.target.value) || 0)}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Remise (%)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={item.discount_percent || 0}
-                          onFocus={(e) => e.target.select()}
-                          onChange={(e) => onUpdateItem(itemIndex, 'discount_percent', parseFloat(e.target.value) || 0)}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                         />
                       </div>

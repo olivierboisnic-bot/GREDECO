@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Quotation, QuotationItem } from '../lib/supabase';
 import { formatCurrencyForPDF as formatCurrency } from '../utils/numberFormat';
+import { computeQuotationTotals } from '../utils/quotationTotals';
 import { getTranslations, Language } from '../utils/translations';
 
 interface ObjectiveGroup {
@@ -726,18 +727,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
     // Replace multiple spaces with single space
     cleanDesc = cleanDesc.replace(/\s+/g, ' ').trim();
 
-    const globalDiscount = quotation.global_discount_percent || 0;
-    const totalDiscount = (item.discount_percent || 0) + globalDiscount;
-
-    if (totalDiscount > 0) {
-      cleanDesc += ` (Remise: ${totalDiscount}%`;
-      if (item.discount_percent > 0 && globalDiscount > 0) {
-        cleanDesc += ` = ${item.discount_percent}% + ${globalDiscount}% globale`;
-      }
-      cleanDesc += ')';
-    }
-
-    const adjustedUnitPrice = (item.unit_price || 0) * (1 - totalDiscount / 100);
+    const adjustedUnitPrice = item.unit_price || 0;
     const adjustedAmountHT = adjustedUnitPrice * item.quantity;
 
     const rowIndex = tableData.length;
@@ -765,21 +755,12 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   });
   console.log('Total tableData rows:', tableData.length);
 
-  const globalDiscount = quotation.global_discount_percent || 0;
-  const subtotal = items.reduce((sum, item) => {
-    const totalDiscount = (item.discount_percent || 0) + globalDiscount;
-    const adjustedUnitPrice = (item.unit_price || 0) * (1 - totalDiscount / 100);
-    const adjustedAmountHT = adjustedUnitPrice * item.quantity;
-    return sum + adjustedAmountHT;
-  }, 0);
-  const totalVAT = items.reduce((sum, item) => {
-    const totalDiscount = (item.discount_percent || 0) + globalDiscount;
-    const adjustedUnitPrice = (item.unit_price || 0) * (1 - totalDiscount / 100);
-    const adjustedAmountHT = adjustedUnitPrice * item.quantity;
-    const vatAmount = adjustedAmountHT * (item.vat_percent || 20) / 100;
-    return sum + vatAmount;
-  }, 0);
-  const totalTTC = subtotal + totalVAT;
+  const totals = computeQuotationTotals(items, {
+    type: quotation.global_discount_type || 'percent',
+    percent: quotation.global_discount_percent || 0,
+    amount: quotation.global_discount_amount || 0,
+  });
+  const { subtotalHT, discountAmount, totalHT, totalVAT, totalTTC } = totals;
 
   autoTable(pdf, {
     startY: yPos,
@@ -912,8 +893,9 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
 
   yPos += 8;
 
+  const discountRows = discountAmount > 0 ? 14 : 0;
   const totalsBoxWidth = 85;
-  const totalsBoxHeight = 36;
+  const totalsBoxHeight = 36 + discountRows;
   const totalsBoxX = pageWidth - totalsBoxWidth - margin;
 
   if (yPos + totalsBoxHeight > pageHeight - margin) {
@@ -929,22 +911,34 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'bold');
   pdf.text(t.totalExclTax, totalsBoxX + 5, yPos + 7);
-  pdf.text(`${formatCurrency(subtotal)} €`, totalsBoxX + totalsBoxWidth - 5, yPos + 7, { align: 'right' });
+  pdf.text(`${formatCurrency(subtotalHT)} €`, totalsBoxX + totalsBoxWidth - 5, yPos + 7, { align: 'right' });
+
+  if (discountAmount > 0) {
+    const discountLabel = quotation.global_discount_type === 'amount'
+      ? t.discount
+      : `${t.discount} (${quotation.global_discount_percent}%)`;
+    pdf.setTextColor(200, 0, 0);
+    pdf.text(discountLabel, totalsBoxX + 5, yPos + 14);
+    pdf.text(`-${formatCurrency(discountAmount)} €`, totalsBoxX + totalsBoxWidth - 5, yPos + 14, { align: 'right' });
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(t.totalAfterDiscount, totalsBoxX + 5, yPos + 21);
+    pdf.text(`${formatCurrency(totalHT)} €`, totalsBoxX + totalsBoxWidth - 5, yPos + 21, { align: 'right' });
+  }
 
   pdf.setFont('helvetica', 'normal');
-  pdf.text(t.totalVat, totalsBoxX + 5, yPos + 14);
-  pdf.text(`${formatCurrency(totalVAT)} €`, totalsBoxX + totalsBoxWidth - 5, yPos + 14, { align: 'right' });
+  pdf.text(t.totalVat, totalsBoxX + 5, yPos + 14 + discountRows);
+  pdf.text(`${formatCurrency(totalVAT)} €`, totalsBoxX + totalsBoxWidth - 5, yPos + 14 + discountRows, { align: 'right' });
 
   pdf.setDrawColor(100, 130, 200);
   pdf.setLineWidth(0.2);
-  pdf.line(totalsBoxX + 5, yPos + 18, totalsBoxX + totalsBoxWidth - 5, yPos + 18);
+  pdf.line(totalsBoxX + 5, yPos + 18 + discountRows, totalsBoxX + totalsBoxWidth - 5, yPos + 18 + discountRows);
 
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(11);
   pdf.setFillColor(100, 130, 200);
   pdf.setTextColor(100, 130, 200);
-  pdf.text(t.totalInclTax, totalsBoxX + 5, yPos + 27);
-  pdf.text(`${formatCurrency(totalTTC)} €`, totalsBoxX + totalsBoxWidth - 5, yPos + 27, { align: 'right' });
+  pdf.text(t.totalInclTax, totalsBoxX + 5, yPos + 27 + discountRows);
+  pdf.text(`${formatCurrency(totalTTC)} €`, totalsBoxX + totalsBoxWidth - 5, yPos + 27 + discountRows, { align: 'right' });
   pdf.setTextColor(0, 0, 0);
 
   yPos += 40;

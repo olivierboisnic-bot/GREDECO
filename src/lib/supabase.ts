@@ -54,6 +54,8 @@ export interface Quotation {
   timepoints: string;
   vat_rate: number;
   global_discount_percent?: number;
+  global_discount_type?: 'percent' | 'amount';
+  global_discount_amount?: number;
   language?: string;
   study_type?: string;
   number_of_conditions?: number;
