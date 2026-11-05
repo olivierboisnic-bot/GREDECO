@@ -1,0 +1,13 @@
+{
+  "projectId": "60014829",
+  "functions": {
+    "generate-pdf": {
+      "hasChanged": false,
+      "hash": "55e9034a88e867b68e3fd7351c6b7db0f66060f1770ab0455170b231df03c7c0"
+    },
+    "reset-password": {
+      "hasChanged": false,
+      "hash": "4a5675d2b1af19622b5c649ee3caacb13244ec770a971902ad090eb661e03075"
+    }
+  }
+}

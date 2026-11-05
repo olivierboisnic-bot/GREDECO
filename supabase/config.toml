@@ -1,0 +1,2 @@
+[functions.generate-pdf]
+verify_jwt = true

@@ -285,7 +285,7 @@ export async function generateInvoicePDF(invoice: Invoice, quotation: Quotation)
   pdf.setTextColor(255, 0, 0);
   pdf.text('GREDECO a reçu l\'agrément en ce qui concerne le crédit d\'impôt en faveur', margin, yPos);
   yPos += 4;
-  pdf.text('de la recherche de 2022 à 2026', margin, yPos);
+  pdf.text('de la recherche de 2027 à 2030', margin, yPos);
   pdf.setTextColor(0, 0, 0);
 
   yPos += 8;

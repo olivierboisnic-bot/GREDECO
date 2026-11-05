@@ -330,7 +330,7 @@ Deno.serve(async (req: Request) => {
   </table>
 
   <div class="credit-impot">
-    <p>GREDECO a reçu l'agrément en ce qui concerne le crédit d'impôt en faveur de la recherche de 2022 à 2026</p>
+    <p>GREDECO a reçu l'agrément en ce qui concerne le crédit d'impôt en faveur de la recherche de 2027 à 2030</p>
   </div>
 
   <div class="signatures">
