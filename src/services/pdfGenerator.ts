@@ -941,7 +941,7 @@ export async function generateQuotationPDF(quotation: Quotation, items: Quotatio
   pdf.text(`${formatCurrency(totalTTC)} €`, totalsBoxX + totalsBoxWidth - 5, yPos + 27 + discountRows, { align: 'right' });
   pdf.setTextColor(0, 0, 0);
 
-  yPos += 40;
+  yPos += totalsBoxHeight + 4;
 
   if (yPos + 10 > pageHeight - margin) {
     pdf.addPage();

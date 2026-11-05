@@ -3,7 +3,7 @@
   "functions": {
     "generate-pdf": {
       "hasChanged": false,
-      "hash": "55e9034a88e867b68e3fd7351c6b7db0f66060f1770ab0455170b231df03c7c0"
+      "hash": "b318a8febd8a132e420e3207d4f7f8112e39c3f4401f58e8e53a448207fe9fb8"
     },
     "reset-password": {
       "hasChanged": false,

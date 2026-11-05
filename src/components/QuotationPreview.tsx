@@ -625,7 +625,7 @@ export default function QuotationPreview({ quotation, items, onClose }: Quotatio
             </div>
 
             <div className="mb-3 text-xs italic text-gray-600 bg-gray-50 p-2 rounded">
-              <p>GREDECO a reçu l'agrément en ce qui concerne le crédit d'impôt en faveur de la recherche de 2027 à 2030</p>
+              <p>GREDECO a reçu l'agrément en ce qui concerne le crédit d'impôt en faveur de la recherche de 2027 à 2031</p>
             </div>
 
             <div className="mb-3 grid grid-cols-2 gap-6">
