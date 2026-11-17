@@ -498,51 +498,77 @@ export default function ServiceManager() {
         return;
       }
 
-      const { error: deleteItemsError } = await supabase
-        .from('quotation_items')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+      const shouldUpdatePrices = confirm(
+        `Cette importation va mettre à jour les prestations existantes et ajouter les nouvelles.\n\n` +
+        `Les devis et leur historique seront conservés. Aucune donnée historique ne sera supprimée.\n\n` +
+        `Continuer ?`
+      );
 
-      if (deleteItemsError) {
-        console.error('Error clearing quotation items:', deleteItemsError);
-        alert(`Error clearing quotation items: ${deleteItemsError.message}`);
+      if (!shouldUpdatePrices) {
         return;
       }
 
-      const { error: deleteQuotationsError } = await supabase
-        .from('quotations')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+      const existingServicesByName = new Map(
+        services.map((service) => [service.name.trim().toLowerCase(), service])
+      );
+      let updatedCount = 0;
+      let createdCount = 0;
+      let databaseErrorCount = 0;
 
-      if (deleteQuotationsError) {
-        console.error('Error clearing quotations:', deleteQuotationsError);
-        alert(`Error clearing quotations: ${deleteQuotationsError.message}`);
-        return;
+      for (const serviceData of importedServices) {
+        const serviceName = serviceData.name.toString().trim();
+        const serviceKey = serviceName.toLowerCase();
+        const existingService = existingServicesByName.get(serviceKey);
+        const serviceUpdateData = {
+          name: serviceName,
+          appareil: serviceData.appareil,
+          langues: serviceData.langues,
+          base_price: serviceData.base_price,
+          tva_rate: serviceData.tva_rate,
+          unit: serviceData.unit,
+          category: serviceData.category,
+          type: serviceData.type,
+          multiplier_type: serviceData.multiplier_type,
+          updated_at: serviceData.updated_at,
+        };
+
+        const { error } = existingService
+          ? await supabase
+              .from('services')
+              .update(serviceUpdateData)
+              .eq('id', existingService.id)
+          : await supabase
+              .from('services')
+              .insert([{ ...serviceUpdateData, is_active: true }]);
+
+        if (error) {
+          databaseErrorCount++;
+          console.error(`Error updating service ${serviceName}:`, error);
+          continue;
+        }
+
+        if (existingService) {
+          updatedCount++;
+        } else {
+          createdCount++;
+        }
       }
 
-      const { error: deleteServicesError } = await supabase
-        .from('services')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-
-      if (deleteServicesError) {
-        console.error('Error clearing existing services:', deleteServicesError);
-        alert(`Error clearing existing services: ${deleteServicesError.message}`);
-        return;
-      }
-
-      const { data: insertedData, error } = await supabase
-        .from('services')
-        .insert(importedServices)
-        .select();
-
-      if (error) {
-        console.error('Error importing services:', error);
-        alert(`Error importing services: ${error.message}`);
+      if (databaseErrorCount > 0) {
+        alert(
+          `Import terminé avec ${databaseErrorCount} erreur(s).\n` +
+          `${updatedCount} prestation(s) mise(s) à jour et ${createdCount} nouvelle(s) ajoutée(s).\n` +
+          `Les devis historiques ont été conservés.`
+        );
       } else {
-        alert(`Successfully cleared all existing data and imported ${insertedData?.length || 0} new services${errorCount > 0 ? `. Skipped ${errorCount} invalid rows.` : '.'}`);
-        loadServices();
+        alert(
+          `Import terminé sans suppression.\n` +
+          `${updatedCount} prestation(s) mise(s) à jour et ${createdCount} nouvelle(s) ajoutée(s).` +
+          (errorCount > 0 ? `\n${errorCount} ligne(s) invalide(s) ignorée(s).` : '')
+        );
       }
+
+      loadServices();
     } catch (error) {
       console.error('Error reading file:', error);
       alert('Error reading file. Please ensure it is a valid Excel file (.xlsx, .xls).');
@@ -683,7 +709,7 @@ export default function ServiceManager() {
             className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 text-sm font-medium shadow-md"
           >
             <Upload size={16} />
-            {importing ? 'Import...' : 'Excel'}
+            {importing ? 'Import...' : 'Mettre à jour les prix'}
           </button>
           <button
             onClick={handleExportTemplate}
@@ -702,6 +728,9 @@ export default function ServiceManager() {
             </button>
           )}
         </div>
+        <p className="mt-3 text-sm text-gray-600">
+          L’import Excel met à jour les prestations existantes par leur nom et ajoute les nouvelles, sans supprimer les devis historiques.
+        </p>
       </div>
 
       <div className="p-6">
