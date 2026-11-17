@@ -336,22 +336,6 @@ export default function ServiceManager() {
         return;
       }
 
-      // Original bulk import from service template - clears all data
-      const confirmClear = confirm(
-        'WARNING: This will DELETE ALL existing data including:\n' +
-        '- All services and pricing\n' +
-        '- All quotations\n' +
-        '- All quotation items\n\n' +
-        'This action cannot be undone. Are you sure you want to continue?'
-      );
-
-      if (!confirmClear) {
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-        return;
-      }
-
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
