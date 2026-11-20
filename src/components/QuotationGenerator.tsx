@@ -1709,6 +1709,15 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
 
     // Mark this item as manually edited if description is changed
     if (field === 'description' && item.service_id) {
+      // Preserve the hidden MANDATORY marker: quotation reload relies on it to
+      // recognize mandatory services; losing it makes the reload rebuild the
+      // line from the catalog and wipe the custom description and price
+      const mandatoryMarkers = ['MANDATORY FOR ALL STUDIES', 'MANDATORY FOR CLINICAL TRIALS', 'MANDATORY FOR LABORATORY TRIALS'];
+      const previousDescription = updatedItems[index].description || '';
+      const activeMarker = mandatoryMarkers.find(marker => previousDescription.includes(marker));
+      if (activeMarker && !String(value).includes(activeMarker)) {
+        item.description = `${value} - ${activeMarker}`;
+      }
       setManuallyEditedItems(prev => {
         const newSet = new Set(prev).add(item.service_id);
         // Update ref immediately to ensure consistency
