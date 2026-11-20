@@ -196,13 +196,28 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
   const getItemKey = (item: any, itemIndex?: number): string => {
     if (!item.service_id) return 'no_service';
 
-    // Check if it's a mandatory service
-    if (item.description?.includes('MANDATORY FOR ALL STUDIES')) {
-      return `${item.service_id}_mandatory_all`;
-    } else if (item.description?.includes('MANDATORY FOR CLINICAL TRIALS')) {
-      return `${item.service_id}_mandatory_clinical`;
-    } else if (item.description?.includes('MANDATORY FOR LABORATORY TRIALS')) {
-      return `${item.service_id}_mandatory_lab`;
+    // Mandatory lines can repeat the same service (e.g. rapport intermédiaire +
+    // rapport final). Give each occurrence a distinct key so manual edits,
+    // deletions and reloads don't collide; the counting must mirror the one
+    // used when loading a quotation from the database.
+    let marker: 'all' | 'clinical' | 'lab' | null = null;
+    if (item.description?.includes('MANDATORY FOR ALL STUDIES')) marker = 'all';
+    else if (item.description?.includes('MANDATORY FOR CLINICAL TRIALS')) marker = 'clinical';
+    else if (item.description?.includes('MANDATORY FOR LABORATORY TRIALS')) marker = 'lab';
+
+    if (marker) {
+      const markerText = marker === 'all' ? 'ALL STUDIES' : marker === 'clinical' ? 'CLINICAL TRIALS' : 'LABORATORY TRIALS';
+      let occurrence = 0;
+      if (itemIndex !== undefined) {
+        for (let i = 0; i < itemIndex; i++) {
+          const prev = itemsRef.current[i];
+          if (!prev || prev.service_id !== item.service_id) continue;
+          if (prev.description?.includes(`MANDATORY FOR ${markerText}`)) occurrence++;
+        }
+      }
+      return occurrence === 0
+        ? `${item.service_id}_mandatory_${marker}`
+        : `${item.service_id}_mandatory_${marker}_${occurrence}`;
     }
 
     // For objective-based services, use service_id + objective_id + instanceId if exists
@@ -1820,19 +1835,19 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
 
     // If it's a mandatory service, track that it was removed
     if (item.service_id && !item.objective_name) {
-      const getItemKey = (item: any): string => {
-        if (item.description?.includes('MANDATORY FOR ALL STUDIES')) {
-          return `${item.service_id}_mandatory_all`;
-        } else if (item.description?.includes('MANDATORY FOR CLINICAL TRIALS')) {
-          return `${item.service_id}_mandatory_clinical`;
-        } else if (item.description?.includes('MANDATORY FOR LABORATORY TRIALS')) {
-          return `${item.service_id}_mandatory_lab`;
-        }
-        return item.service_id;
-      };
+      const itemKey = getItemKey(item, index);
+      const isSameMandatory = (it: any) =>
+        it.service_id === item.service_id &&
+        ((item.description?.includes('MANDATORY FOR ALL STUDIES') && it.description?.includes('MANDATORY FOR ALL STUDIES')) ||
+         (item.description?.includes('MANDATORY FOR CLINICAL TRIALS') && it.description?.includes('MANDATORY FOR CLINICAL TRIALS')) ||
+         (item.description?.includes('MANDATORY FOR LABORATORY TRIALS') && it.description?.includes('MANDATORY FOR LABORATORY TRIALS')));
 
-      const itemKey = getItemKey(item);
-      setRemovedMandatoryServices(prev => new Set(prev).add(itemKey));
+      // Only block auto re-adding when this was the last occurrence: with
+      // duplicates, deleting one line must leave the other untouched
+      const hasLaterDuplicate = items.some((it, i) => i > index && isSameMandatory(it));
+      if (!hasLaterDuplicate) {
+        setRemovedMandatoryServices(prev => new Set(prev).add(itemKey));
+      }
     }
 
     setItems(items.filter((_, i) => i !== index));
