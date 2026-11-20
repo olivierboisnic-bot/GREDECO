@@ -504,6 +504,7 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
     const loadedDescriptionsSet = new Set<string>();
     const loadedServiceNamesMap = new Map<string, string>();
     const loadedTimepointsByItemKey = new Map<string, string[]>();
+    const mandatoryKeyCounts = new Map<string, number>();
 
     items.forEach((item: any) => {
       console.log('📦 Processing item from DB:', {
@@ -517,14 +518,30 @@ export default function QuotationGenerator({ onQuotationCreated, editingQuotatio
       if (item.service_id) {
         let itemKey: string;
 
-        // Handle mandatory services differently
-        if (item.description?.includes('MANDATORY FOR ALL STUDIES')) {
-          itemKey = `${item.service_id}_mandatory_all`;
-        } else if (item.description?.includes('MANDATORY FOR CLINICAL TRIALS')) {
-          itemKey = `${item.service_id}_mandatory_clinical`;
-        } else if (item.description?.includes('MANDATORY FOR LABORATORY TRIALS')) {
-          itemKey = `${item.service_id}_mandatory_lab`;
-        } else if (item.objective_name) {
+    // Handle mandatory services differently.
+    // Multiple lines of the same mandatory service (e.g. "rapport intermédiaire"
+    // and "rapport final") share the same service_id, so the description marker
+    // alone collides. Disambiguate by line position once that service_id has
+    // already been used, keeping keys stable within one load.
+    if (item.description?.includes('MANDATORY FOR ALL STUDIES')) {
+      const seenCount = mandatoryKeyCounts.get(String(item.service_id)) || 0;
+      mandatoryKeyCounts.set(String(item.service_id), seenCount + 1);
+      itemKey = seenCount === 0
+        ? `${item.service_id}_mandatory_all`
+        : `${item.service_id}_mandatory_all_${seenCount}`;
+    } else if (item.description?.includes('MANDATORY FOR CLINICAL TRIALS')) {
+      const seenCount = mandatoryKeyCounts.get(String(item.service_id)) || 0;
+      mandatoryKeyCounts.set(String(item.service_id), seenCount + 1);
+      itemKey = seenCount === 0
+        ? `${item.service_id}_mandatory_clinical`
+        : `${item.service_id}_mandatory_clinical_${seenCount}`;
+    } else if (item.description?.includes('MANDATORY FOR LABORATORY TRIALS')) {
+      const seenCount = mandatoryKeyCounts.get(String(item.service_id)) || 0;
+      mandatoryKeyCounts.set(String(item.service_id), seenCount + 1);
+      itemKey = seenCount === 0
+        ? `${item.service_id}_mandatory_lab`
+        : `${item.service_id}_mandatory_lab_${seenCount}`;
+    } else if (item.objective_name) {
           const matchedObjective = finalObjectives.find(obj => obj.name === item.objective_name);
           const objectiveId = matchedObjective?.id || item.objective_name;
           itemKey = `${item.service_id}_${objectiveId}`;
